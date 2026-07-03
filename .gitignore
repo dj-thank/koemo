@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build / packaging
+build/
+dist/
+release/
+*.spec
+!koemo.spec
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local data (recordings/config live in user home, not the repo)
+*.wav
+outputs/
+.codex_tmp/

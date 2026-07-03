@@ -1,0 +1,6 @@
+# Build-only dependencies for creating dist\Koemo.
+#
+# Recommended build setup:
+#   python -m pip install -r requirements.txt -r requirements-build.txt
+#   python -m PyInstaller koemo.spec --noconfirm --clean
+pyinstaller

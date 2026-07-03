@@ -1,0 +1,8 @@
+# Optional tooling dependencies.
+#
+# Needed only for:
+#   python scripts\build_native_corrections.py --hf-dataset ...
+#
+# Do not install this file for normal Koemo use or PyInstaller packaging unless
+# you explicitly need public Hugging Face corpus ingestion.
+datasets
