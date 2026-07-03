@@ -26,7 +26,8 @@ def available():
     return bool(_seg_model() and _emb_model())
 
 
-def _get(num_speakers=-1, threshold=0.4):
+# scripts/koemo_diarize_bench.py 実測: 閾値0.3は過分割、0.4-0.6が安定帯。中央の0.5を既定にする。
+def _get(num_speakers=-1, threshold=0.5):
     global _sd
     if _sd is None:
         import sherpa_onnx
@@ -74,7 +75,8 @@ def download_diarization_models():
 
 def assign_speakers(segments, turns, base_label):
     """文字起こし [(st,en,txt)] に話者ターン [(st,en,spk)] を時間重複で割当し
-    [(st, label, txt)] を返す。複数話者なら base_label+番号、1人/不明なら base_label。"""
+    [(st, label, txt)] を返す。複数話者なら base_label+番号、1人/不明なら base_label。
+    重複ゼロのセグメント（短い相槌等）は時間的に最も近いターンの話者へ寄せる。"""
     n_spk = len(set(t[2] for t in turns)) if turns else 0
     rows = []
     for (st, en, txt) in segments:
@@ -83,6 +85,8 @@ def assign_speakers(segments, turns, base_label):
             ov = max(0.0, min(en, te) - max(st, ts))
             if ov > best:
                 best, sp = ov, k
+        if sp is None and turns:
+            sp = min(turns, key=lambda t: max(t[0] - en, st - t[1], 0.0))[2]
         label = base_label if (sp is None or n_spk <= 1) else f"{base_label}{sp + 1}"
         rows.append((st, label, txt))
     return rows
