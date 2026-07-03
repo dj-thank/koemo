@@ -147,6 +147,22 @@ python scripts\koemo_release_build.py --unsigned-beta --skip-installer
 
 Unsigned artifacts are named `UNSIGNED-BETA` and must not be described as worldwide-ready.
 
+### Release pipeline (verify → sign → publish)
+
+1. **Verify**: reproduce the local-GPU summary path end to end and capture a log. See
+   [`docs/REIMPORT_VERIFICATION.md`](docs/REIMPORT_VERIFICATION.md) for the latest run
+   (transcribe + `Summarizer.summarize()` via CT2/Qwen2.5-3B, with actual generated text).
+   Re-run with `scripts/koemo_model_bench.py` / `scripts/koemo_fast_integration_check.py` before
+   each release.
+2. **Sign**: see [`docs/SIGNING_RUNBOOK.md`](docs/SIGNING_RUNBOOK.md) for the full Azure Artifact
+   Signing account setup (one-time, ~$9.99/month Basic tier, requires explicit approval before any
+   paid step) and the `scripts\koemo_release_build.py` invocation above (repeatable, no code
+   changes needed once credentials exist).
+3. **Publish**: attach the signed `release\Koemo-*-Setup.exe`, `release\Koemo-*-portable.zip`,
+   `release\SHA256SUMS.txt`, and `release\Koemo-*-release.json` (check `"signed": true`) to the
+   GitHub release. Unsigned `UNSIGNED-BETA` artifacts are for internal validation only and must not
+   be published as a public release.
+
 ## Meetily Comparison
 
 Checked against Meetily official pages on **2026-05-30**:

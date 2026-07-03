@@ -1,0 +1,22 @@
+{
+  "steps": [
+    "gpu.gpu_ok() = False (Code43 GPU failure -> CPU fallback expected)",
+    "transcribe_segments(): 59.314s, 6 segments",
+    "summarize(): 310.220s via LocalCT2Backend (device=cpu)"
+  ],
+  "gpu_ok": false,
+  "input_wav": "C:\\Users\\rambo\\AppData\\Local\\Temp\\claude\\C--Users-rambo\\44a8050c-4b2a-443e-ab5a-c7589a0e5c55\\scratchpad\\verify_tts.wav",
+  "input_duration_sec": 53.27,
+  "transcribe_seconds": 59.314,
+  "transcript_text": "これはコエモの再インポート検証テストです。本日の会議では3つの議題を話し合いました。 1つ目は署名手続きについてです。Azure Trusted Signingの契約はコストが発生するため今回は見送り、手順書の作成に留めることを決定しました。 2つ目はGPU動作確認です。このマシンのグラフィックボードはCode43エラーで停止しており、急打は使用できないため、CPUフォールバックでようやく処理を検証することにしました。 3つ目は次のアクションです。 担当のランボさんが署名手順書を確認し、来週までにリリースパイプラインの文書を完成させることになりました。 未解決の質問として、マイクロソフトストアでの配布が費用面で有利かどうかは追加調査が必要です。",
+  "summarize_seconds": 310.22,
+  "summary_backend_used": "LocalCT2Backend",
+  "summary_device": "cpu",
+  "progress_log": [
+    "要約モデル読み込み中...",
+    "AI要約を生成中...",
+    "タイトル生成中..."
+  ],
+  "title": "GPU動作確認と署名手続き検討",
+  "summary_md": "## 要旨\n本日の会議では、署名手続きの見送りと手順書作成、GPU動作確認のCPUフォールバック、署名手順書の確認とリリースパイプライン文書の完成が決定し、マイクロソフトストアでの配布費用面について未解決の質問が出た。\n\n## 主要トピック\n- 署名手続きの見送りと手順書作成\n- GPU動作確認のCPUフォールバック\n- 担当者の署名手順書確認とリリースパイプライン文書の完成\n\n## 決定事項\n- Azure Trusted Signing契約の見送りと手順書作成\n- GPU動作確認のCPUフォールバック\n- ランボさんの署名手順書確認とリリースパイプライン文書の完成\n\n## アクションアイテム\n- ランボさんが署名手順書を確認し、来週までにリリースパイプラインの文書を完成させる\n\n## 未解決の質問\n- マイクロソフトストアでの配布が費用面で有利かどうかの追加調査が必要"
+}
