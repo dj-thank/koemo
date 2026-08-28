@@ -1,0 +1,42 @@
+{
+  "name": "MoraWeave",
+  "version": "0.1.0",
+  "releasedAt": "2026-08-28",
+  "author": "SHOTA Moriwaki",
+  "license": "MIT",
+  "distribution": {
+    "repository": "dj-thank/koemo",
+    "branch": "public/moraweave-v0.1.0",
+    "projectRoot": "moraweave/",
+    "sourceOfTruth": "direct source tree"
+  },
+  "implemented": [
+    "immutable observed transcript contract",
+    "four-stream dynamic evidence gate",
+    "grammar honeytrap penalty",
+    "selective acoustic re-listening planner",
+    "hashed rights-gated n-gram memory",
+    "local teacher probability cache",
+    "loopback-only closed-set local teacher client",
+    "mora segmentation",
+    "CER, Kana-CER, MLER, number, disfluency and unsupported-correction metrics",
+    "Common Voice HMAC manifest builder",
+    "JMdict memory builder",
+    "Aozora per-work manifest builder",
+    "shared-encoder Whisper multi-head training module",
+    "long-form Japanese transcription runner",
+    "JSON, observed TXT, normalized TXT, SRT and VTT output",
+    "Python 3.11 and 3.12 CI",
+    "clean wheel installation CI",
+    "PyTorch auxiliary-head CI",
+    "rights and secret scanning CI"
+  ],
+  "notClaimed": [
+    "real-model accuracy improvement",
+    "published trained checkpoint",
+    "real-audio benchmark",
+    "GPU speed or VRAM measurement",
+    "Qwen3-ASR API compatibility across future versions",
+    "legal advice about upstream datasets"
+  ]
+}
