@@ -267,12 +267,25 @@ class TranscriptState:
     normalization_method: str | None = None
 
     def __post_init__(self) -> None:
-        ids = {item.hypothesis.candidate_id for item in self.hypotheses}
-        if self.observed_candidate_id not in ids:
+        by_id = {
+            item.hypothesis.candidate_id: item
+            for item in self.hypotheses
+        }
+        if len(by_id) != len(self.hypotheses):
+            raise ValueError("hypothesis candidate IDs must be unique")
+        if self.observed_candidate_id not in by_id:
             raise ValueError("observed_candidate_id is not present in hypotheses")
+        observed = by_id[self.observed_candidate_id].hypothesis
+        if self.observed_transcript != observed.text:
+            raise ValueError(
+                "observed_transcript must equal the selected acoustic candidate text"
+            )
+        ranks = sorted(item.rank for item in self.hypotheses)
+        if ranks != list(range(1, len(self.hypotheses) + 1)):
+            raise ValueError("hypothesis ranks must be unique and contiguous from 1")
         if (
             self.llm_preferred_candidate_id is not None
-            and self.llm_preferred_candidate_id not in ids
+            and self.llm_preferred_candidate_id not in by_id
         ):
             raise ValueError("llm_preferred_candidate_id is not present in hypotheses")
 
