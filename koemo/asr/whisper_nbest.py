@@ -47,6 +47,40 @@ class WhisperNBestItem:
         )
 
 
+def resolve_faster_whisper_suppress_tokens(
+    tokenizer: Any,
+    suppress_tokens: Sequence[int] = (-1,),
+) -> tuple[int, ...]:
+    """Resolve faster-whisper's ``-1`` sentinel before calling CTranslate2.
+
+    The public faster-whisper option ``-1`` means the tokenizer's default
+    non-speech set.  CTranslate2 itself does not define that sentinel, so a
+    low-level adapter must expand it explicitly.  Control tokens are appended
+    exactly as faster-whisper does.
+    """
+
+    values = [int(token) for token in suppress_tokens]
+    if -1 in values:
+        values = [token for token in values if token >= 0]
+        values.extend(int(token) for token in tokenizer.non_speech_tokens)
+    elif any(token < 0 for token in values):
+        raise ValueError("negative suppression tokens other than -1 are invalid")
+
+    required_names = (
+        "transcribe",
+        "translate",
+        "sot",
+        "sot_prev",
+        "sot_lm",
+        "no_speech",
+    )
+    missing = [name for name in required_names if not hasattr(tokenizer, name)]
+    if missing:
+        raise TypeError(f"tokenizer is missing suppression attributes: {missing}")
+    values.extend(int(getattr(tokenizer, name)) for name in required_names)
+    return tuple(sorted(set(values)))
+
+
 def _unwrap_ctranslate2_whisper(model: Any) -> Any:
     """Accept either ``faster_whisper.WhisperModel`` or raw CT2 Whisper."""
 
@@ -69,10 +103,11 @@ def decode_nbest_window(
     no_repeat_ngram_size: int = 0,
     max_length: int = 448,
     suppress_blank: bool = True,
-    suppress_tokens: Sequence[int] = (-1,),
+    suppress_tokens: Sequence[int] | None = None,
     max_initial_timestamp_index: int = 50,
     window_id: str = "0000",
     decode_tokens: Callable[[Sequence[int]], str] | None = None,
+    tokenizer: Any | None = None,
 ) -> tuple[WhisperNBestItem, ...]:
     """Decode one encoded Whisper window into deterministic beam N-best.
 
@@ -87,6 +122,21 @@ def decode_nbest_window(
     if beam_size < 1:
         raise ValueError("beam_size must be >= 1")
     effective_beam_size = max(beam_size, num_hypotheses)
+
+    if tokenizer is not None:
+        requested_suppress_tokens = (-1,) if suppress_tokens is None else suppress_tokens
+        resolved_suppress_tokens = resolve_faster_whisper_suppress_tokens(
+            tokenizer, requested_suppress_tokens
+        )
+        if decode_tokens is None:
+            decode_tokens = tokenizer.decode
+    else:
+        requested_suppress_tokens = () if suppress_tokens is None else suppress_tokens
+        if any(int(token) < 0 for token in requested_suppress_tokens):
+            raise ValueError(
+                "negative suppression sentinels require a faster-whisper tokenizer"
+            )
+        resolved_suppress_tokens = tuple(int(token) for token in requested_suppress_tokens)
 
     raw_model = _unwrap_ctranslate2_whisper(model)
     results = raw_model.generate(
@@ -103,7 +153,7 @@ def decode_nbest_window(
         return_no_speech_prob=True,
         max_initial_timestamp_index=max_initial_timestamp_index,
         suppress_blank=suppress_blank,
-        suppress_tokens=list(suppress_tokens),
+        suppress_tokens=list(resolved_suppress_tokens),
         sampling_topk=1,
         sampling_temperature=0.0,
     )
