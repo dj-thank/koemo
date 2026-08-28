@@ -77,6 +77,13 @@ from .scoring import (
     rank_acoustic_hypotheses,
     select_observed_transcript,
 )
+from .weight_tuning import (
+    RankingMetrics,
+    RankingTrainingExample,
+    WeightFitResult,
+    evaluate_score_weights,
+    fit_score_weights,
+)
 from .whisper_nbest import (
     WhisperNBestItem,
     as_transcript_hypotheses,
@@ -108,6 +115,8 @@ __all__ = [
     "MoraUnit",
     "NBestCandidate",
     "RankedHypothesis",
+    "RankingMetrics",
+    "RankingTrainingExample",
     "ScoreWeights",
     "SystemPrediction",
     "TextSpan",
@@ -117,6 +126,7 @@ __all__ = [
     "UnitKind",
     "UnitSource",
     "UtteranceEvaluation",
+    "WeightFitResult",
     "WhisperNBestItem",
     "aggregate_system_metrics",
     "as_transcript_hypotheses",
@@ -131,8 +141,10 @@ __all__ = [
     "evaluate_accuracy_gate",
     "evaluate_calibration",
     "evaluate_japanese_asr",
+    "evaluate_score_weights",
     "evaluate_system",
     "evaluate_utterance",
+    "fit_score_weights",
     "fit_temperature",
     "kana_character_error_rate",
     "learner_error_preservation",
