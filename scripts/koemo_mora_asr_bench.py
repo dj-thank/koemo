@@ -49,10 +49,16 @@ def _optional_string(value: Any, *, field_name: str) -> str | None:
     return value
 
 
-def _required_string(record: dict[str, Any], key: str) -> str:
+def _required_string(
+    record: dict[str, Any],
+    key: str,
+    *,
+    allow_empty: bool = False,
+) -> str:
     value = record.get(key)
-    if not isinstance(value, str) or not value:
-        raise ValueError(f"{key} must be a non-empty string")
+    if not isinstance(value, str) or (not allow_empty and not value):
+        qualifier = "a string" if allow_empty else "a non-empty string"
+        raise ValueError(f"{key} must be {qualifier}")
     return value
 
 
@@ -65,12 +71,20 @@ def _parse_manifest(records: Iterable[dict[str, Any]]) -> tuple[BenchmarkUtteran
             for key, value in groups.items()
         ):
             raise TypeError("groups must be an object of string values")
+        is_speech = record.get("isSpeech", True)
+        if not isinstance(is_speech, bool):
+            raise TypeError("isSpeech must be a boolean")
         items.append(
             BenchmarkUtterance(
                 utterance_id=_required_string(record, "utteranceId"),
                 speaker_id=_required_string(record, "speakerId"),
                 split=BenchmarkSplit(_required_string(record, "split")),
-                reference_text=_required_string(record, "referenceText"),
+                reference_text=_required_string(
+                    record,
+                    "referenceText",
+                    allow_empty=True,
+                ),
+                is_speech=is_speech,
                 reference_reading=_optional_string(
                     record.get("referenceReading"),
                     field_name="referenceReading",
@@ -153,7 +167,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Evaluate baseline and candidate Japanese ASR JSONL predictions with "
-            "CER, mora metrics, oracle headroom, speaker bootstrap, and gates."
+            "CER, mora metrics, silence hallucination metrics, oracle headroom, "
+            "speaker bootstrap, and release gates."
         )
     )
     parser.add_argument("--manifest", required=True, type=Path)
@@ -174,6 +189,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-mora-regression", type=float, default=0.0)
     parser.add_argument("--min-preservation-delta", type=float, default=0.0)
     parser.add_argument("--max-normalization-increase", type=float, default=0.0)
+    parser.add_argument("--max-hallucination-increase", type=float, default=0.0)
+    parser.add_argument("--max-missed-speech-increase", type=float, default=0.0)
+    parser.add_argument("--max-speech-accept-rate-decrease", type=float, default=0.0)
     parser.add_argument("--require-cer-ci", action="store_true")
     parser.add_argument("--require-mora-ci", action="store_true")
     parser.add_argument("--allow-speaker-overlap", action="store_true")
@@ -229,14 +247,25 @@ def main(argv: list[str] | None = None) -> int:
         confidence_level=args.confidence_level,
         seed=args.bootstrap_seed,
     )
+
+    candidate_by_id = {
+        item.utterance_id: item for item in candidate_evaluations
+    }
+    baseline_mora_evaluations = tuple(
+        item
+        for item in baseline_evaluations
+        if item.mora_error_rate is not None
+        and candidate_by_id[item.utterance_id].mora_error_rate is not None
+    )
+    mora_ids = {item.utterance_id for item in baseline_mora_evaluations}
+    candidate_mora_evaluations = tuple(
+        item for item in candidate_evaluations if item.utterance_id in mora_ids
+    )
     mora_bootstrap = None
-    if (
-        baseline_metrics.mora_evaluated == len(selected_manifest)
-        and candidate_metrics.mora_evaluated == len(selected_manifest)
-    ):
+    if baseline_mora_evaluations:
         mora_bootstrap = paired_speaker_bootstrap(
-            baseline_evaluations,
-            candidate_evaluations,
+            baseline_mora_evaluations,
+            candidate_mora_evaluations,
             metric="mora_error_rate",
             samples=args.bootstrap_samples,
             confidence_level=args.confidence_level,
@@ -251,6 +280,13 @@ def main(argv: list[str] | None = None) -> int:
             max_mora_regression=args.max_mora_regression,
             min_learner_preservation_delta=args.min_preservation_delta,
             max_normalized_to_target_increase=args.max_normalization_increase,
+            max_hallucination_on_silence_increase=(
+                args.max_hallucination_increase
+            ),
+            max_missed_speech_rate_increase=args.max_missed_speech_increase,
+            max_speech_accept_rate_decrease=(
+                args.max_speech_accept_rate_decrease
+            ),
             require_cer_confidence_improvement=args.require_cer_ci,
             require_mora_confidence_improvement=args.require_mora_ci,
         ),
@@ -261,6 +297,10 @@ def main(argv: list[str] | None = None) -> int:
         "schemaVersion": "koemo-mora-asr-benchmark-v1",
         "split": split.value,
         "utteranceCount": len(selected_manifest),
+        "speechUtteranceCount": sum(item.is_speech for item in selected_manifest),
+        "noSpeechUtteranceCount": sum(
+            not item.is_speech for item in selected_manifest
+        ),
         "speakerCount": len({item.speaker_id for item in selected_manifest}),
         "baseline": baseline_metrics.to_dict(),
         "candidate": candidate_metrics.to_dict(),
