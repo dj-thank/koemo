@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import re
 
+from .mora import split_mora
+
 _KANA_ONLY = re.compile(r"^[\u3040-\u30ffー\s、。！？!?・]+$")
 
 
 def _mora_split(text: str) -> tuple[str | None, list[str]]:
-    try:
-        from scripts.japanese_mora import split_mora
-    except ImportError:
-        return None, []
     units = split_mora(text)
     return text, [unit.kana for unit in units]
 
