@@ -1,0 +1,98 @@
+name: MoraWeave Frontier CI
+
+on:
+  push:
+    branches:
+      - codex/moraweave-frontier-20260829
+      - public/moraweave-v0.2.0
+  pull_request:
+    paths:
+      - 'moraweave/**'
+      - '.github/workflows/moraweave-frontier-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-and-wheel:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    defaults:
+      run:
+        working-directory: moraweave
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --upgrade pip setuptools wheel
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m compileall -q src tests scripts
+      - run: pytest -q
+      - run: moraweave demo --output runs/demo.json
+      - run: moraweave fuse examples/nbest.json --output runs/fused.json
+      - run: python -m build --wheel
+      - name: Clean wheel install
+        shell: bash
+        run: |
+          python -m venv /tmp/moraweave-clean
+          /tmp/moraweave-clean/bin/python -m pip install --upgrade pip
+          /tmp/moraweave-clean/bin/python -m pip install dist/*.whl
+          /tmp/moraweave-clean/bin/moraweave --help
+          /tmp/moraweave-clean/bin/moraweave demo --output /tmp/moraweave-demo.json
+
+  torch-multitask:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: moraweave
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip setuptools wheel
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install -e '.[dev]'
+      - run: pytest -q tests/test_training_optional.py
+
+  rights-schema-and-secrets:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: moraweave
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install jsonschema
+      - run: python scripts/validate_rights_registry.py data/rights_registry.json
+      - name: Reject committed audio, weights, and likely secrets
+        shell: bash
+        run: |
+          if find . -type f \( -name '*.wav' -o -name '*.mp3' -o -name '*.m4a' -o -name '*.flac' -o -name '*.pt' -o -name '*.safetensors' \) | grep -q .; then
+            echo 'Raw audio or model weights must not be committed.' >&2
+            exit 1
+          fi
+          if grep -RIE --exclude-dir=.git --exclude='*.md' '(sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,})' .; then
+            echo 'Possible secret detected.' >&2
+            exit 1
+          fi
+
+  optional-api-contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: moraweave
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[dev]'
+      - run: pytest -q tests/test_frontier.py -k 'qwen or endpoint or canonical'
+      - run: echo 'No ASR or LLM weights are downloaded in public CI.'
