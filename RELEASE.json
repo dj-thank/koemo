@@ -1,0 +1,33 @@
+{
+  "name": "Japanese Speaking Assessment Mora Core",
+  "version": "0.3.0",
+  "distribution": "direct-source-public-branch",
+  "repository": "dj-thank/koemo",
+  "branch": "public/japanese-speaking-assessment-mora-core-v0.3.0",
+  "mainBranchModified": false,
+  "license": "MIT",
+  "author": "SHOTA Moriwaki",
+  "components": [
+    "src/mora.mjs",
+    "src/transcript-contract.mjs",
+    "src/asr-fusion.mjs",
+    "src/local-lm-reranker.mjs",
+    "scripts/japanese_mora.py",
+    "scripts/whisper_nbest.py",
+    "training/mora_multitask.py",
+    "schemas",
+    "tests"
+  ],
+  "validatedInPublicCI": [
+    "node-unit-tests",
+    "python-unit-tests",
+    "python-compileall"
+  ],
+  "notValidatedInPublicCI": [
+    "real-faster-whisper-model-inference",
+    "real-ollama-request",
+    "learner-speech-benchmark",
+    "whisper-fine-tuning"
+  ],
+  "archivePolicy": "The source tree is authoritative. A previously truncated ZIP is not part of the release."
+}
