@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moraweave"
+version = "0.1.0"
+description = "Mora-aware evidence-fused Japanese speech transcription with selective re-listening"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "SHOTA Moriwaki" }]
+dependencies = []
+keywords = ["Japanese", "ASR", "Whisper", "mora", "speech-recognition", "Qwen"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Sound/Audio :: Speech"
+]
+
+[project.optional-dependencies]
+asr = [
+  "faster-whisper>=1.1,<2",
+  "numpy>=1.26"
+]
+qwen = [
+  "qwen-asr>=0.0.5"
+]
+train = [
+  "torch>=2.4",
+  "transformers>=4.45",
+  "numpy>=1.26"
+]
+data = [
+  "datasets>=3.0",
+  "pyarrow>=17",
+  "pyopenjtalk>=0.4"
+]
+dev = [
+  "pytest>=8",
+  "jsonschema>=4.20",
+  "build>=1.2"
+]
+
+[project.scripts]
+moraweave = "moraweave.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["moraweave*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
