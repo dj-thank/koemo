@@ -49,6 +49,33 @@ class ManifestIntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing predictions"):
             evaluate_system(manifest, predictions)
 
+    def test_non_speech_manifest_rows_require_empty_references(self) -> None:
+        silence = BenchmarkUtterance(
+            "u-silence",
+            "s-silence",
+            BenchmarkSplit.TEST,
+            "",
+            is_speech=False,
+        )
+        self.assertFalse(silence.is_speech)
+        with self.assertRaisesRegex(ValueError, "empty reference_text"):
+            BenchmarkUtterance(
+                "u-invalid",
+                "s-silence",
+                BenchmarkSplit.TEST,
+                "幻覚",
+                is_speech=False,
+            )
+
+    def test_no_speech_prediction_cannot_hide_transcript_text(self) -> None:
+        with self.assertRaisesRegex(ValueError, "empty text"):
+            SystemPrediction(
+                "u1",
+                "candidate",
+                "ご視聴ありがとうございました",
+                status="no_speech",
+            )
+
 
 class OracleAndAggregationTests(unittest.TestCase):
     def test_nbest_oracle_exposes_reranking_headroom(self) -> None:
@@ -142,8 +169,41 @@ class OracleAndAggregationTests(unittest.TestCase):
         self.assertEqual(metrics.normalized_to_target_rate, 0.0)
         self.assertEqual(metrics.accept_count, 1)
         self.assertEqual(metrics.review_count, 1)
+        self.assertEqual(metrics.speech_accept_rate, 0.5)
+        self.assertEqual(metrics.accepted_speech_count, 1)
         self.assertEqual(metrics.latency_p50_ms, 150.0)
         self.assertEqual(metrics.latency_p95_ms, 195.0)
+
+    def test_aggregates_silence_hallucination_and_no_speech_detection(self) -> None:
+        manifest = (
+            BenchmarkUtterance("u1", "s1", BenchmarkSplit.TEST, "ア"),
+            BenchmarkUtterance(
+                "u2",
+                "s2",
+                BenchmarkSplit.TEST,
+                "",
+                is_speech=False,
+            ),
+        )
+        hallucinating = (
+            SystemPrediction("u1", "baseline", "ア"),
+            SystemPrediction("u2", "baseline", "ご視聴ありがとうございました"),
+        )
+        guarded = (
+            SystemPrediction("u1", "candidate", "ア"),
+            SystemPrediction("u2", "candidate", "", status="no_speech"),
+        )
+        baseline = aggregate_system_metrics(evaluate_system(manifest, hallucinating))
+        candidate = aggregate_system_metrics(evaluate_system(manifest, guarded))
+
+        self.assertEqual(baseline.hallucinated_speech_count, 1)
+        self.assertEqual(baseline.hallucination_on_silence_rate, 1.0)
+        self.assertEqual(baseline.no_speech_recall, 0.0)
+        self.assertEqual(candidate.true_no_speech_count, 1)
+        self.assertEqual(candidate.hallucination_on_silence_rate, 0.0)
+        self.assertEqual(candidate.no_speech_precision, 1.0)
+        self.assertEqual(candidate.no_speech_recall, 1.0)
+        self.assertEqual(candidate.no_speech_f1, 1.0)
 
 
 class StatisticalGateTests(unittest.TestCase):
@@ -212,6 +272,53 @@ class StatisticalGateTests(unittest.TestCase):
         )
         self.assertFalse(gate.passed)
         self.assertIn("cer_regression", gate.reasons)
+
+    def test_accuracy_gate_blocks_silence_hallucination_regression(self) -> None:
+        manifest = (
+            BenchmarkUtterance(
+                "u1",
+                "s1",
+                BenchmarkSplit.TEST,
+                "",
+                is_speech=False,
+            ),
+        )
+        baseline = aggregate_system_metrics(
+            evaluate_system(
+                manifest,
+                (SystemPrediction("u1", "baseline", "", status="no_speech"),),
+            )
+        )
+        candidate = aggregate_system_metrics(
+            evaluate_system(
+                manifest,
+                (SystemPrediction("u1", "candidate", "幻覚"),),
+            )
+        )
+        gate = evaluate_accuracy_gate(baseline, candidate)
+        self.assertFalse(gate.passed)
+        self.assertIn("hallucination_on_silence_regression", gate.reasons)
+
+    def test_accuracy_gate_blocks_missed_speech_and_acceptance_collapse(self) -> None:
+        manifest = (
+            BenchmarkUtterance("u1", "s1", BenchmarkSplit.TEST, "発話"),
+        )
+        baseline = aggregate_system_metrics(
+            evaluate_system(
+                manifest,
+                (SystemPrediction("u1", "baseline", "発話"),),
+            )
+        )
+        candidate = aggregate_system_metrics(
+            evaluate_system(
+                manifest,
+                (SystemPrediction("u1", "candidate", "", status="no_speech"),),
+            )
+        )
+        gate = evaluate_accuracy_gate(baseline, candidate)
+        self.assertFalse(gate.passed)
+        self.assertIn("missed_speech_rate_regression", gate.reasons)
+        self.assertIn("speech_accept_rate_regression", gate.reasons)
 
 
 if __name__ == "__main__":
