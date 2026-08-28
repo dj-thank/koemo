@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/complete-transcript.schema.json",
+  "title": "Complete Japanese transcription document",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "createdAt",
+    "source",
+    "engine",
+    "language",
+    "duration",
+    "observedTranscript",
+    "normalizedTranscript",
+    "diarization",
+    "quality"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "required": ["name", "path", "bytes", "sha256"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "engine": { "type": "object" },
+    "language": { "type": "object" },
+    "duration": { "type": "object" },
+    "observedTranscript": { "$ref": "#/$defs/transcriptVariant" },
+    "normalizedTranscript": {
+      "allOf": [
+        { "$ref": "#/$defs/transcriptVariant" },
+        {
+          "type": "object",
+          "required": ["observedSha256", "mode", "rejectedSegmentIds"],
+          "properties": {
+            "observedSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "mode": { "enum": ["deterministic", "local-llm-guarded"] },
+            "rejectedSegmentIds": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      ]
+    },
+    "diarization": { "type": "object" },
+    "quality": { "type": "object" },
+    "outputs": { "type": "object", "additionalProperties": { "type": "string" } }
+  },
+  "$defs": {
+    "transcriptVariant": {
+      "type": "object",
+      "required": ["text", "segments"],
+      "properties": {
+        "text": { "type": "string" },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "index", "start", "end", "text", "words"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^seg-[0-9]{6}$" },
+              "index": { "type": "integer", "minimum": 0 },
+              "start": { "type": "number", "minimum": 0 },
+              "end": { "type": "number", "minimum": 0 },
+              "speaker": { "type": ["string", "null"] },
+              "text": { "type": "string" },
+              "uncertaintyReasons": { "type": "array", "items": { "type": "string" } },
+              "words": { "type": "array", "items": { "type": "object" } }
+            },
+            "additionalProperties": true
+          }
+        },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "immutable": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
