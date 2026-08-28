@@ -1,0 +1,62 @@
+name: Mora ASR core
+
+on:
+  pull_request:
+    paths:
+      - "koemo/asr/**"
+      - "scripts/koemo_mora_asr_bench.py"
+      - "tests/test_mora_*.py"
+      - "tests/fixtures/mora_asr/**"
+      - ".github/workflows/mora-asr.yml"
+  push:
+    paths:
+      - "koemo/asr/**"
+      - "scripts/koemo_mora_asr_bench.py"
+      - "tests/test_mora_*.py"
+      - "tests/fixtures/mora_asr/**"
+      - ".github/workflows/mora-asr.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate syntax
+        run: >-
+          python -m compileall -q
+          koemo/asr
+          scripts/koemo_mora_asr_bench.py
+          tests
+
+      - name: Check benchmark CLI help
+        run: python scripts/koemo_mora_asr_bench.py --help
+
+      - name: Run end-to-end accuracy gate fixture
+        run: >-
+          python scripts/koemo_mora_asr_bench.py
+          --manifest tests/fixtures/mora_asr/manifest.jsonl
+          --baseline tests/fixtures/mora_asr/baseline.jsonl
+          --candidate tests/fixtures/mora_asr/candidate.jsonl
+          --bootstrap-samples 200
+          --require-cer-ci
+          --require-mora-ci
+          --fail-on-regression

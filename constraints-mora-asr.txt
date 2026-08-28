@@ -1,0 +1,4 @@
+# Tested compatibility envelope for koemo/asr/whisper_nbest.py.
+# Install with: pip install -r requirements.txt -c constraints-mora-asr.txt
+faster-whisper==1.2.1
+ctranslate2>=4.0,<5
