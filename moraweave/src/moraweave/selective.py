@@ -29,22 +29,26 @@ class RelistenRequest:
 
 
 class SpanDecoder(Protocol):
-    def decode_span(self, audio_path: str, request: RelistenRequest) -> list[CandidateEvidence]: ...
+    def decode_span(
+        self, audio_path: str, request: RelistenRequest
+    ) -> list[CandidateEvidence]: ...
 
 
-def _merge_spans(spans: list[TimeSpan], join_gap_ms: int = 240) -> list[TimeSpan]:
+def _merge_spans(
+    spans: list[TimeSpan], join_gap_ms: int = 240
+) -> list[TimeSpan]:
     if not spans:
         return []
     ordered = sorted(spans, key=lambda item: (item.start_ms, item.end_ms))
-    merged: list[TimeSpan] = [ordered[0]]
+    merged = [ordered[0]]
     for span in ordered[1:]:
         previous = merged[-1]
         if span.start_ms <= previous.end_ms + join_gap_ms:
             merged[-1] = TimeSpan(
-                start_ms=previous.start_ms,
-                end_ms=max(previous.end_ms, span.end_ms),
-                reasons=tuple(sorted(set(previous.reasons + span.reasons))),
-                priority=max(previous.priority, span.priority),
+                previous.start_ms,
+                max(previous.end_ms, span.end_ms),
+                tuple(sorted(set(previous.reasons + span.reasons))),
+                max(previous.priority, span.priority),
             )
         else:
             merged.append(span)
@@ -64,41 +68,49 @@ def plan_relisten(
     gate = ranked[0].gate
     if not gate.needs_relisten:
         return []
-
     base_priority = min(1.0, gate.entropy * 0.55 + gate.disagreement * 0.45)
     spans: list[TimeSpan] = []
     if token_spans:
         for item in token_spans:
-            confidence = item.get("confidence")
-            disagreement = item.get("moraDisagreement")
             try:
-                confidence_value = float(confidence) if confidence is not None else 1.0
-                disagreement_value = float(disagreement) if disagreement is not None else 0.0
+                confidence_value = float(item.get("confidence", 1.0))
+                disagreement_value = float(item.get("moraDisagreement", 0.0))
+                local_ambiguity = float(item.get("posteriorAmbiguity", 0.0))
+                criticality = float(item.get("criticality", 0.5))
                 start = int(item["startMs"])
                 end = int(item["endMs"])
             except (KeyError, TypeError, ValueError):
                 continue
-            local_priority = max(1.0 - confidence_value, disagreement_value)
-            if local_priority >= 0.35:
+            local_priority = max(
+                1 - confidence_value,
+                disagreement_value,
+                local_ambiguity,
+            ) * (0.65 + 0.35 * criticality)
+            if local_priority >= 0.30:
                 spans.append(
                     TimeSpan(
-                        start_ms=max(segment_start_ms, start - 120),
-                        end_ms=min(segment_end_ms, end + 120),
-                        reasons=tuple(sorted(set(gate.reasons + ("local-token-uncertainty",)))),
-                        priority=max(base_priority, local_priority),
+                        max(segment_start_ms, start - 120),
+                        min(segment_end_ms, end + 120),
+                        tuple(
+                            sorted(
+                                set(
+                                    gate.reasons
+                                    + ("local-token-uncertainty",)
+                                )
+                            )
+                        ),
+                        max(base_priority, local_priority),
                     )
                 )
-
     if not spans:
         spans.append(
             TimeSpan(
-                start_ms=segment_start_ms,
-                end_ms=segment_end_ms,
-                reasons=gate.reasons or ("global-candidate-ambiguity",),
-                priority=base_priority,
+                segment_start_ms,
+                segment_end_ms,
+                gate.reasons or ("global-candidate-ambiguity",),
+                base_priority,
             )
         )
-
     merged = sorted(_merge_spans(spans), key=lambda item: item.priority, reverse=True)
     selected: list[RelistenRequest] = []
     used = 0
@@ -110,23 +122,79 @@ def plan_relisten(
         used += duration
         if used >= max_total_ms:
             break
-    return sorted(selected, key=lambda item: item.span.start_ms)
+    return sorted(selected, key=lambda request: request.span.start_ms)
 
 
 def merge_relisten_candidates(
     original: list[CandidateEvidence],
     additional: list[CandidateEvidence],
 ) -> list[CandidateEvidence]:
-    """Deduplicate by text while retaining the strongest acoustic evidence."""
+    """Deduplicate identical text while retaining independent source support."""
 
-    by_text: dict[str, CandidateEvidence] = {}
+    from dataclasses import replace
+
+    grouped: dict[str, list[CandidateEvidence]] = {}
     for candidate in [*original, *additional]:
-        current = by_text.get(candidate.text)
-        if current is None:
-            by_text[candidate.text] = candidate
-            continue
-        current_score = float("-inf") if current.acoustic is None else current.acoustic
-        new_score = float("-inf") if candidate.acoustic is None else candidate.acoustic
-        if new_score > current_score:
-            by_text[candidate.text] = candidate
-    return sorted(by_text.values(), key=lambda item: item.candidate_id)
+        grouped.setdefault(candidate.text, []).append(candidate)
+
+    output: list[CandidateEvidence] = []
+    for group in grouped.values():
+        strongest = max(
+            group,
+            key=lambda candidate: (
+                float("-inf")
+                if candidate.acoustic is None
+                else candidate.acoustic,
+                candidate.candidate_id,
+            ),
+        )
+        sources = {
+            source
+            for candidate in group
+            for source in (
+                candidate.evidence_source,
+                *(
+                    str(value)
+                    for value in candidate.metadata.get("sourceSupport", [])
+                    if str(value)
+                ),
+            )
+            if source
+        }
+        metadata = dict(strongest.metadata)
+        metadata["sourceSupport"] = sorted(sources)
+        output.append(
+            replace(
+                strongest,
+                metadata=metadata,
+                mora=(
+                    strongest.mora
+                    if strongest.mora is not None
+                    else next(
+                        (candidate.mora for candidate in group if candidate.mora is not None),
+                        None,
+                    )
+                ),
+                lexical=(
+                    strongest.lexical
+                    if strongest.lexical is not None
+                    else next(
+                        (candidate.lexical for candidate in group if candidate.lexical is not None),
+                        None,
+                    )
+                ),
+                preservation=(
+                    strongest.preservation
+                    if strongest.preservation is not None
+                    else next(
+                        (
+                            candidate.preservation
+                            for candidate in group
+                            if candidate.preservation is not None
+                        ),
+                        None,
+                    )
+                ),
+            )
+        )
+    return sorted(output, key=lambda candidate: candidate.candidate_id)
