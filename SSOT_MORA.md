@@ -1,8 +1,6 @@
-# Mora-aware Japanese ASR SSOT
+# Japanese Complete Transcription SSOT — mora and transcript evidence
 
-The canonical full SSOT for release 0.3.0 is packaged in
-`japanese-speaking-assessment-mora-core-v0.3.0-public.zip` at the repository
-root. The source archive is checksum-pinned by `SHA256SUMS.txt`.
+The mora-aware ASR contract remains an underlying layer of the complete Japanese transcription system.
 
 Central invariant:
 
@@ -10,8 +8,20 @@ Central invariant:
 observedTranscript != normalizedTranscript
 ```
 
-The immutable observed transcript, ASR candidates, mora units, and uncertainty
-spans are selected from acoustic evidence before any local-language-model rank
-is consulted. See `PROJECT_README.md`, `VALIDATION.md`, and the complete
-`SSOT_MORA.md` inside the source archive for the runtime, training, persistence,
-and evaluation contracts.
+The authoritative complete document contract is:
+
+```text
+schemas/complete-transcript.schema.json
+```
+
+The observed layer contains the ASR text, segment and word timestamps, acoustic confidence evidence, speaker assignments, readings and mora annotations. Its canonical payload is protected by SHA-256 and verified by `japanese_transcriber.pipeline.verify_observed_integrity`.
+
+The normalized layer is a derivative for readability. It stores `observedSha256`, may use deterministic normalization or guarded local Ollama normalization, and never overwrites observed evidence.
+
+Mora rules:
+
+- small-kana compounds such as `キャ`, `ティ`, `ファ` are one mora;
+- `ン`, `ッ`, and `ー` are each one independent mora;
+- missing acoustic timing remains null;
+- kanji readings require explicit pyopenjtalk opt-in;
+- pronunciation and learner-error evaluation must use observed evidence, not only normalized text.
