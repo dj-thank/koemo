@@ -1,5 +1,4 @@
-* text=auto
-*.bat text eol=crlf
+* text=auto eol=lf
 *.ps1 text eol=crlf
-*.png binary
-*.ico binary
+*.zip binary
+*.wav binary

@@ -1,0 +1,36 @@
+{
+  "project": "japanese-speaking-assessment-mora-core",
+  "version": "0.3.0",
+  "publishedAt": "2026-08-28",
+  "publicationTarget": {
+    "repository": "dj-thank/koemo",
+    "branch": "public/japanese-speaking-assessment-mora-core-v0.3.0",
+    "mode": "public-distribution-branch"
+  },
+  "source": {
+    "commit": "db4806a6e09b7882a6e375f642b80f81138051dd",
+    "tree": "ca8cb15b0aa83cfe5c9bd9983e03973a990b5170",
+    "trackedFiles": 58,
+    "license": "MIT"
+  },
+  "validation": {
+    "nodePassed": 30,
+    "pythonPassed": 45,
+    "pythonSkipped": 1,
+    "failed": 0,
+    "syntaxChecks": "passed",
+    "jsonSchemaChecks": "passed",
+    "notExecuted": [
+      "real faster-whisper model inference",
+      "real Ollama request",
+      "real checkpoint fine-tuning",
+      "learner-speech benchmark"
+    ]
+  },
+  "artifact": {
+    "name": "japanese-speaking-assessment-mora-core-v0.3.0-public.zip",
+    "bytes": 88475,
+    "sha256": "8a069eb5a7fb546fd740a7fff8af5ca20b96902be164ea07fcf35ab7fa1e9e1a",
+    "contains": "complete 58-file source tree and per-file publication manifest"
+  }
+}

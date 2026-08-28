@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/mora-multitask-config.schema.json",
+  "title": "Whisper mora multitask auxiliary-head configuration",
+  "type": "object",
+  "required": [
+    "mora_vocab_size",
+    "mora_blank_id",
+    "phone_vocab_size",
+    "phone_blank_id",
+    "dropout",
+    "text_loss_weight",
+    "mora_ctc_loss_weight",
+    "phone_ctc_loss_weight",
+    "boundary_loss_weight",
+    "ctc_zero_infinity",
+    "schema_version"
+  ],
+  "properties": {
+    "mora_vocab_size": {"type": "integer", "minimum": 2},
+    "mora_blank_id": {"type": "integer", "minimum": 0},
+    "phone_vocab_size": {"type": ["integer", "null"], "minimum": 2},
+    "phone_blank_id": {"type": "integer", "minimum": 0},
+    "dropout": {"type": "number", "minimum": 0, "exclusiveMaximum": 1},
+    "text_loss_weight": {"type": "number", "minimum": 0},
+    "mora_ctc_loss_weight": {"type": "number", "minimum": 0},
+    "phone_ctc_loss_weight": {"type": "number", "minimum": 0},
+    "boundary_loss_weight": {"type": "number", "minimum": 0},
+    "ctc_zero_infinity": {"type": "boolean"},
+    "schema_version": {"const": "1.0.0"}
+  },
+  "additionalProperties": false
+}

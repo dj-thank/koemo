@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "engine": "faster-whisper-ctranslate2-nbest",
+  "language": "ja",
+  "task": "transcribe",
+  "durationSeconds": 2.4,
+  "durationSecondsBeforeVad": 2.4,
+  "sampleRate": 16000,
+  "audioPcmSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "modelInputPcmSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "audioHashFormat": "sha256-float32le-mono-waveform",
+  "beamSize": 8,
+  "requestedHypotheses": 3,
+  "returnedHypotheses": 3,
+  "lengthPenalty": 1.0,
+  "withoutTimestamps": true,
+  "vadFilter": false,
+  "observedCandidateId": "fw-0001",
+  "candidates": [
+    {
+      "id": "fw-0001",
+      "text": "昨日学校を行きました",
+      "tokenIds": [101, 102, 103],
+      "tokenCount": 3,
+      "rawRank": 1,
+      "rank": 1,
+      "sequenceScore": -0.12,
+      "cumulativeLogprob": -0.36,
+      "avgLogprob": -0.09,
+      "whisperScore": -0.09,
+      "moraCtcScore": -0.08,
+      "noSpeechProbability": 0.01,
+      "backend": "faster-whisper-ctranslate2-nbest"
+    },
+    {
+      "id": "fw-0002",
+      "text": "昨日学校に行きました",
+      "tokenIds": [101, 104, 103],
+      "tokenCount": 3,
+      "rawRank": 2,
+      "rank": 2,
+      "sequenceScore": -0.2,
+      "cumulativeLogprob": -0.6,
+      "avgLogprob": -0.15,
+      "whisperScore": -0.15,
+      "moraCtcScore": -0.17,
+      "noSpeechProbability": 0.01,
+      "backend": "faster-whisper-ctranslate2-nbest"
+    },
+    {
+      "id": "fw-0003",
+      "text": "昨日会社に行きました",
+      "tokenIds": [101, 105, 103],
+      "tokenCount": 3,
+      "rawRank": 3,
+      "rank": 3,
+      "sequenceScore": -0.35,
+      "cumulativeLogprob": -1.05,
+      "avgLogprob": -0.2625,
+      "whisperScore": -0.2625,
+      "moraCtcScore": -0.3,
+      "noSpeechProbability": 0.01,
+      "backend": "faster-whisper-ctranslate2-nbest"
+    }
+  ],
+  "limitations": [
+    "single-whisper-window-only",
+    "candidate-text-without-token-timestamps",
+    "word-or-mora-timing-must-be-produced-by-a-separate-aligner"
+  ]
+}

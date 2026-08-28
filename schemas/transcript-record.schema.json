@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/transcript-record.schema.json",
+  "title": "Japanese speaking assessment transcript record",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "id",
+    "createdAt",
+    "observedTranscript",
+    "normalizedTranscript",
+    "candidates",
+    "moraUnits",
+    "uncertaintySpans",
+    "audit"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observedTranscript": {
+      "type": "object",
+      "required": [
+        "text",
+        "engine",
+        "language",
+        "createdAt",
+        "sha256",
+        "metadata"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "engine": {
+          "type": "string",
+          "minLength": 1
+        },
+        "language": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "metadata": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "normalizedTranscript": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "text",
+            "model",
+            "mode",
+            "sourceCandidateId",
+            "reasonCodes",
+            "evidence",
+            "createdAt",
+            "observedSha256"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "enum": [
+                "rank-only",
+                "candidate-select",
+                "free-rewrite"
+              ]
+            },
+            "sourceCandidateId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reasonCodes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "observedSha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "evidence": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "moraUnits": {
+      "type": "array",
+      "items": {
+        "$ref": "mora-unit.schema.json"
+      }
+    },
+    "uncertaintySpans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "startChar",
+          "endChar"
+        ],
+        "properties": {
+          "startChar": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "endChar": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "audit": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,13 @@
+{
+  "mora_vocab_size": 128,
+  "mora_blank_id": 0,
+  "phone_vocab_size": null,
+  "phone_blank_id": 0,
+  "dropout": 0.1,
+  "text_loss_weight": 1.0,
+  "mora_ctc_loss_weight": 0.5,
+  "phone_ctc_loss_weight": 0.25,
+  "boundary_loss_weight": 0.1,
+  "ctc_zero_infinity": true,
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/asr-nbest.schema.json",
+  "title": "faster-whisper CTranslate2 N-best result",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "engine",
+    "language",
+    "task",
+    "durationSeconds",
+    "durationSecondsBeforeVad",
+    "sampleRate",
+    "audioPcmSha256",
+    "modelInputPcmSha256",
+    "audioHashFormat",
+    "beamSize",
+    "requestedHypotheses",
+    "returnedHypotheses",
+    "lengthPenalty",
+    "withoutTimestamps",
+    "vadFilter",
+    "observedCandidateId",
+    "candidates",
+    "limitations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "engine": {
+      "const": "faster-whisper-ctranslate2-nbest"
+    },
+    "language": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task": {
+      "enum": [
+        "transcribe",
+        "translate"
+      ]
+    },
+    "durationSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "durationSecondsBeforeVad": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "sampleRate": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "audioPcmSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "beamSize": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "requestedHypotheses": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "returnedHypotheses": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lengthPenalty": {
+      "type": "number",
+      "minimum": 0
+    },
+    "withoutTimestamps": {
+      "const": true
+    },
+    "vadFilter": {
+      "type": "boolean"
+    },
+    "observedCandidateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "tokenIds",
+          "tokenCount",
+          "rawRank",
+          "rank",
+          "sequenceScore",
+          "cumulativeLogprob",
+          "avgLogprob",
+          "whisperScore",
+          "noSpeechProbability",
+          "backend"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tokenIds": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1
+          },
+          "tokenCount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rawRank": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sequenceScore": {
+            "type": "number"
+          },
+          "cumulativeLogprob": {
+            "type": "number"
+          },
+          "avgLogprob": {
+            "type": "number"
+          },
+          "whisperScore": {
+            "type": "number"
+          },
+          "noSpeechProbability": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "backend": {
+            "const": "faster-whisper-ctranslate2-nbest"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "modelInputPcmSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "audioHashFormat": {
+      "const": "sha256-float32le-mono-waveform"
+    }
+  },
+  "additionalProperties": false
+}

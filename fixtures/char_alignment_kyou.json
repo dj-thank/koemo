@@ -1,0 +1,8 @@
+{
+  "characters": [
+    {"char": "き", "start": 0.12, "end": 0.18, "confidence": 0.92},
+    {"char": "ょ", "start": 0.18, "end": 0.215, "confidence": 0.88},
+    {"char": "う", "start": 0.215, "end": 0.31, "confidence": 0.95},
+    {"char": "は", "start": 0.36, "end": 0.44, "confidence": 0.90}
+  ]
+}
