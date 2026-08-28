@@ -1,0 +1,114 @@
+name: Apply MoraWeave Frontier v2b
+
+on:
+  push:
+    branches:
+      - codex/moraweave-frontier-20260829
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: moraweave-frontier-v2-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate-test-and-commit:
+    if: ${{ !contains(github.event.head_commit.message || '', '[frontier-v2]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/moraweave-frontier-20260829
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply idempotent integration
+        run: python moraweave/scripts/apply_frontier_v2b.py
+      - name: Install
+        working-directory: moraweave
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e '.[dev]'
+          python -m pip install build jsonschema
+      - name: Validate all model-free contracts
+        working-directory: moraweave
+        run: |
+          set -o pipefail
+          git diff --check
+          python -m compileall -q src tests scripts
+          python scripts/validate_rights_registry.py data/rights_registry.json
+          pytest -q | tee /tmp/moraweave-pytest-v2b.log
+          moraweave --help
+          moraweave demo --output runs/demo-v2.json
+          moraweave fuse examples/nbest.json --output runs/fused-v2.json
+          moraweave-transcribe --help
+          moraweave-calibrate --help
+      - name: Build and clean-install wheel
+        working-directory: moraweave
+        run: |
+          python -m build --wheel
+          python -m venv /tmp/moraweave-wheel-v2b
+          /tmp/moraweave-wheel-v2b/bin/python -m pip install --upgrade pip
+          /tmp/moraweave-wheel-v2b/bin/python -m pip install dist/*.whl
+          /tmp/moraweave-wheel-v2b/bin/moraweave --help
+          /tmp/moraweave-wheel-v2b/bin/moraweave-transcribe --help
+          /tmp/moraweave-wheel-v2b/bin/moraweave-calibrate --help
+      - name: Security and release hygiene
+        working-directory: moraweave
+        run: |
+          if find . -type f \( -name '*.wav' -o -name '*.mp3' -o -name '*.m4a' -o -name '*.flac' -o -name '*.pt' -o -name '*.pth' -o -name '*.safetensors' \) | grep -q .; then
+            echo 'Raw audio or model weights must not be committed.' >&2
+            exit 1
+          fi
+          if grep -RIE --exclude-dir=.git --exclude='*.md' '(sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,})' .; then
+            echo 'Possible secret detected.' >&2
+            exit 1
+          fi
+      - name: Write validation evidence
+        working-directory: moraweave
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          summary = Path('/tmp/moraweave-pytest-v2b.log').read_text(encoding='utf-8').splitlines()[-1]
+          payload = {
+              'schemaVersion': '1.0.0',
+              'release': '0.2.0',
+              'validatedAt': datetime.now(UTC).isoformat(),
+              'branch': 'codex/moraweave-frontier-20260829',
+              'pytestSummary': summary,
+              'compileall': 'passed',
+              'rightsRegistry': 'passed',
+              'wheelBuild': 'passed',
+              'cleanWheelInstall': 'passed',
+              'installedCliSmoke': 'passed',
+              'rawAudioOrWeightsCommitted': False,
+              'realModelInference': 'not-run',
+              'qwenWeights': 'not-downloaded'
+          }
+          Path('VALIDATION_FRONTIER.json').write_text(json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          Path('VALIDATION_FRONTIER.md').write_text(
+              '# MoraWeave v0.2.0 frontier validation\n\n'
+              f"- Validated: `{payload['validatedAt']}`\n"
+              f"- Pytest: `{summary}`\n"
+              '- Compileall: passed\n'
+              '- Rights registry: passed\n'
+              '- Wheel build and clean installation: passed\n'
+              '- Installed CLI smoke tests: passed\n'
+              '- Release hygiene: passed\n\n'
+              'No real ASR/LLM weights or learner-speech benchmark were executed in this model-free lane.\n',
+              encoding='utf-8'
+          )
+          PY
+      - name: Commit only after all gates pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m '[frontier-v2] Complete calibrated selective runtime integration'
+          git push origin HEAD:codex/moraweave-frontier-20260829
