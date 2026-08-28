@@ -57,6 +57,11 @@ from .mora import (
     normalize_kana,
     split_mora,
 )
+from .runtime_compat import (
+    RuntimeCompatibility,
+    assert_faster_whisper_runtime_compatible,
+    probe_faster_whisper_runtime,
+)
 from .schema import (
     CTCCharUnit,
     HypothesisFeatures,
@@ -117,6 +122,7 @@ __all__ = [
     "RankedHypothesis",
     "RankingMetrics",
     "RankingTrainingExample",
+    "RuntimeCompatibility",
     "ScoreWeights",
     "SystemPrediction",
     "TextSpan",
@@ -130,6 +136,7 @@ __all__ = [
     "WhisperNBestItem",
     "aggregate_system_metrics",
     "as_transcript_hypotheses",
+    "assert_faster_whisper_runtime_compatible",
     "assert_manifest_integrity",
     "attach_llm_rank_only",
     "attach_normalized_transcript",
@@ -157,6 +164,7 @@ __all__ = [
     "normalized_entropy",
     "normalized_mora_distance",
     "paired_speaker_bootstrap",
+    "probe_faster_whisper_runtime",
     "rank_acoustic_hypotheses",
     "resolve_faster_whisper_suppress_tokens",
     "select_consensus_observed_transcript",
