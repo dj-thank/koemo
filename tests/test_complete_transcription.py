@@ -3,12 +3,19 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 
 from japanese_transcriber.diarization import assign_speakers, parse_rttm, relabel_speakers
 from japanese_transcriber.engine import EngineConfig
 from japanese_transcriber.formatters import render_srt, render_vtt
-from japanese_transcriber.local_llm import NormalizationGuard, validate_local_endpoint, validate_normalized_block
+from japanese_transcriber.local_llm import (
+    NormalizationGuard,
+    build_local_opener,
+    validate_local_endpoint,
+    validate_normalized_block,
+)
+from japanese_transcriber.mora import split_mora
 from japanese_transcriber.normalization import deterministic_normalize, join_fragments
 from japanese_transcriber.pipeline import PipelineConfig, transcribe_file, verify_observed_integrity
 from japanese_transcriber.types import EngineResult, Segment, Word
@@ -47,6 +54,13 @@ class FakeEngine:
         )
 
 
+class MoraTests(unittest.TestCase):
+    def test_packaged_mora_tokenizer(self) -> None:
+        self.assertEqual([unit.kana for unit in split_mora("がっこう")], ["ガ", "ッ", "コ", "ウ"])
+        self.assertEqual([unit.kana for unit in split_mora("きゃく")], ["キャ", "ク"])
+        self.assertEqual([unit.kana for unit in split_mora("ｽｰﾊﾟｰ")], ["ス", "ー", "パ", "ー"])
+
+
 class NormalizationTests(unittest.TestCase):
     def test_joins_japanese_without_artificial_space(self) -> None:
         self.assertEqual(join_fragments(["今日は、", " 学校へ行きます。"]), "今日は、学校へ行きます。")
@@ -59,6 +73,15 @@ class NormalizationTests(unittest.TestCase):
         self.assertEqual(validate_local_endpoint("http://127.0.0.1:11434"), "http://127.0.0.1:11434/api/chat")
         with self.assertRaises(ValueError):
             validate_local_endpoint("https://example.com/api/chat")
+        with self.assertRaises(ValueError):
+            validate_local_endpoint("http://127.0.0.1:11434/api/chat?redirect=1")
+
+    def test_local_opener_disables_proxy_and_redirect_transport(self) -> None:
+        opener = build_local_opener()
+        proxy_handlers = [handler for handler in opener.handlers if isinstance(handler, urllib.request.ProxyHandler)]
+        self.assertEqual(len(proxy_handlers), 1)
+        self.assertEqual(proxy_handlers[0].proxies, {})
+        self.assertTrue(any(type(handler).__name__ == "_NoRedirectHandler" for handler in opener.handlers))
 
     def test_llm_block_validation_falls_back_on_divergence(self) -> None:
         block = [Segment("seg-000000", 0, 0, 1, "昨日学校を行きました")]
