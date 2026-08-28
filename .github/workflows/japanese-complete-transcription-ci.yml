@@ -20,6 +20,7 @@ jobs:
       - run: python -m compileall -q japanese_transcriber scripts training tests
       - run: python -m unittest -v tests.test_complete_transcription
       - run: python -m unittest -v tests.test_python_components
+      - run: python -m pip install --upgrade pip setuptools wheel
       - run: python -m pip install . --no-build-isolation
       - run: jtranscribe --help
       - run: python -c "from japanese_transcriber.reading import reading_and_mora; assert reading_and_mora('がっこう')[1] == ['ガ', 'ッ', 'コ', 'ウ']"
