@@ -2,3 +2,4 @@
 {"utteranceId":"u2","speakerId":"s1","split":"test","referenceText":"カキ","referenceReading":"カキ","audioSha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","groups":{"condition":"clean"}}
 {"utteranceId":"u3","speakerId":"s2","split":"test","referenceText":"サシ","referenceReading":"サシ","audioSha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","groups":{"condition":"clean"}}
 {"utteranceId":"u4","speakerId":"s2","split":"test","referenceText":"タチ","referenceReading":"タチ","audioSha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","groups":{"condition":"clean"}}
+{"utteranceId":"u5","speakerId":"s3","split":"test","referenceText":"","isSpeech":false,"audioSha256":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","groups":{"condition":"silence"}}
