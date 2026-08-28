@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/moraweave/transcript-record.schema.json",
+  "title": "MoraWeave transcript record",
+  "type": "object",
+  "required": ["observed", "normalized", "diagnostics"],
+  "properties": {
+    "observed": {
+      "type": "object",
+      "required": ["text", "selected_candidate_id", "candidates", "ranked", "uncertainty_spans", "evidence_sha256"],
+      "properties": {
+        "text": { "type": "string" },
+        "selected_candidate_id": { "type": "string" },
+        "candidates": { "type": "array", "minItems": 1 },
+        "ranked": { "type": "array", "minItems": 1 },
+        "uncertainty_spans": { "type": "array" },
+        "source_audio_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "evidence_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": true
+    },
+    "normalized": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["text", "observed_evidence_sha256", "mode"],
+          "properties": {
+            "text": { "type": "string" },
+            "observed_evidence_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "mode": { "enum": ["deterministic", "rank-only", "guarded-rewrite"] },
+            "selected_candidate_id": { "type": ["string", "null"] },
+            "rejected_edits": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "relisten_requests": { "type": "array" },
+    "diagnostics": { "type": "object" }
+  },
+  "additionalProperties": false
+}
