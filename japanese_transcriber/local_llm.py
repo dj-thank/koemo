@@ -30,6 +30,32 @@ class NormalizationResult:
     endpoint_origin: str
 
 
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def _reject(self, request, fp, code, message, headers):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            code,
+            "Ollama redirects are disabled",
+            headers,
+            fp,
+        )
+
+    http_error_301 = _reject
+    http_error_302 = _reject
+    http_error_303 = _reject
+    http_error_307 = _reject
+    http_error_308 = _reject
+
+
+def build_local_opener() -> urllib.request.OpenerDirector:
+    """Return an opener that cannot use proxies or follow redirects."""
+
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoRedirectHandler(),
+    )
+
+
 def _is_loopback_host(hostname: str | None) -> bool:
     if hostname is None:
         return False
@@ -39,7 +65,10 @@ def _is_loopback_host(hostname: str | None) -> bool:
         return ipaddress.ip_address(hostname.strip("[]")).is_loopback
     except ValueError:
         try:
-            return all(ipaddress.ip_address(item[4][0]).is_loopback for item in socket.getaddrinfo(hostname, None))
+            addresses = socket.getaddrinfo(hostname, None)
+            return bool(addresses) and all(
+                ipaddress.ip_address(item[4][0]).is_loopback for item in addresses
+            )
         except (socket.gaierror, ValueError):
             return False
 
@@ -48,6 +77,8 @@ def validate_local_endpoint(endpoint: str) -> str:
     parsed = urlparse(endpoint)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("Ollama endpoint must use http or https")
+    if parsed.query or parsed.fragment:
+        raise ValueError("Ollama endpoint query strings and fragments are not supported")
     if not _is_loopback_host(parsed.hostname):
         raise ValueError("remote LLM endpoints are disabled; use a loopback Ollama endpoint")
     path = parsed.path.rstrip("/")
@@ -64,13 +95,18 @@ def validate_local_endpoint(endpoint: str) -> str:
     return f"{parsed.scheme}://{host}{port}{path}"
 
 
-def _segment_blocks(segments: list[Segment], guard: NormalizationGuard) -> list[list[Segment]]:
+def _segment_blocks(
+    segments: list[Segment], guard: NormalizationGuard
+) -> list[list[Segment]]:
     blocks: list[list[Segment]] = []
     current: list[Segment] = []
     current_chars = 0
     for segment in segments:
         length = len(segment.text)
-        if current and (len(current) >= guard.block_size or current_chars + length > guard.max_block_chars):
+        if current and (
+            len(current) >= guard.block_size
+            or current_chars + length > guard.max_block_chars
+        ):
             blocks.append(current)
             current = []
             current_chars = 0
@@ -81,7 +117,9 @@ def _segment_blocks(segments: list[Segment], guard: NormalizationGuard) -> list[
     return blocks
 
 
-def _validate_candidate(original: str, candidate: str, guard: NormalizationGuard) -> bool:
+def _validate_candidate(
+    original: str, candidate: str, guard: NormalizationGuard
+) -> bool:
     original_cmp = deterministic_normalize(original)
     candidate_cmp = deterministic_normalize(candidate)
     if not candidate_cmp:
@@ -89,10 +127,15 @@ def _validate_candidate(original: str, candidate: str, guard: NormalizationGuard
     ratio = len(candidate_cmp) / max(1, len(original_cmp))
     if ratio < guard.min_length_ratio or ratio > guard.max_length_ratio:
         return False
-    return SequenceMatcher(None, original_cmp, candidate_cmp).ratio() >= guard.min_similarity
+    return (
+        SequenceMatcher(None, original_cmp, candidate_cmp).ratio()
+        >= guard.min_similarity
+    )
 
 
-def validate_normalized_block(block: list[Segment], payload: object, guard: NormalizationGuard) -> tuple[list[dict[str, str]], list[str]]:
+def validate_normalized_block(
+    block: list[Segment], payload: object, guard: NormalizationGuard
+) -> tuple[list[dict[str, str]], list[str]]:
     if not isinstance(payload, dict) or not isinstance(payload.get("segments"), list):
         raise ValueError("local LLM response must contain a segments array")
     rows = payload["segments"]
@@ -112,24 +155,38 @@ def validate_normalized_block(block: list[Segment], payload: object, guard: Norm
             raise ValueError(f"normalized segment {segment_id} has no text")
         original = expected[segment_id].text
         if _validate_candidate(original, text, guard):
-            accepted.append({"id": segment_id, "text": deterministic_normalize(text)})
+            accepted.append(
+                {"id": segment_id, "text": deterministic_normalize(text)}
+            )
         else:
-            accepted.append({"id": segment_id, "text": deterministic_normalize(original)})
+            accepted.append(
+                {"id": segment_id, "text": deterministic_normalize(original)}
+            )
             rejected.append(segment_id)
     accepted.sort(key=lambda item: expected[item["id"]].index)
     return accepted, rejected
 
 
 class OllamaNormalizer:
-    def __init__(self, *, model: str, endpoint: str = "http://127.0.0.1:11434/api/chat", timeout_seconds: float = 120.0, guard: NormalizationGuard | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        model: str,
+        endpoint: str = "http://127.0.0.1:11434/api/chat",
+        timeout_seconds: float = 120.0,
+        guard: NormalizationGuard | None = None,
+    ) -> None:
         if ":cloud" in model.lower() or model.lower().startswith("cloud/"):
             raise ValueError("cloud-routed model names are disabled")
         self.model = model
         self.endpoint = validate_local_endpoint(endpoint)
         self.timeout_seconds = timeout_seconds
         self.guard = guard or NormalizationGuard()
+        self._opener = build_local_opener()
 
-    def normalize(self, segments: list[Segment], *, context: str = "") -> NormalizationResult:
+    def normalize(
+        self, segments: list[Segment], *, context: str = ""
+    ) -> NormalizationResult:
         output: list[dict[str, str]] = []
         rejected: list[str] = []
         for block in _segment_blocks(segments, self.guard):
@@ -146,7 +203,10 @@ class OllamaNormalizer:
                             "type": "object",
                             "additionalProperties": False,
                             "required": ["id", "text"],
-                            "properties": {"id": {"type": "string"}, "text": {"type": "string"}},
+                            "properties": {
+                                "id": {"type": "string"},
+                                "text": {"type": "string"},
+                            },
                         },
                     }
                 },
@@ -167,18 +227,32 @@ class OllamaNormalizer:
                 },
                 ensure_ascii=False,
             ).encode("utf-8")
-            request = urllib.request.Request(self.endpoint, data=body, headers={"Content-Type": "application/json"}, method="POST")
+            request = urllib.request.Request(
+                self.endpoint,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "japanese-complete-transcription/1.0.0",
+                },
+                method="POST",
+            )
             try:
-                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+                with self._opener.open(
+                    request, timeout=self.timeout_seconds
+                ) as response:
                     raw = json.loads(response.read().decode("utf-8"))
             except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-                raise RuntimeError(f"local Ollama normalization failed: {exc}") from exc
+                raise RuntimeError(
+                    f"local Ollama normalization failed: {exc}"
+                ) from exc
             content = raw.get("message", {}).get("content")
             try:
                 payload = json.loads(content) if isinstance(content, str) else content
             except json.JSONDecodeError as exc:
                 raise RuntimeError("local Ollama returned invalid JSON") from exc
-            accepted, block_rejected = validate_normalized_block(block, payload, self.guard)
+            accepted, block_rejected = validate_normalized_block(
+                block, payload, self.guard
+            )
             output.extend(accepted)
             rejected.extend(block_rejected)
 
