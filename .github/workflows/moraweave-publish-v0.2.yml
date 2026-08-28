@@ -1,0 +1,153 @@
+name: Publish MoraWeave v0.2 validation
+
+on:
+  push:
+    branches:
+      - public/moraweave-v0.2.0
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: moraweave-public-v0.2
+  cancel-in-progress: false
+
+jobs:
+  validate-and-publish-evidence:
+    if: ${{ !contains(github.event.head_commit.message || '', '[public-v0.2]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: public/moraweave-v0.2.0
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python 3.11 full model-free suite
+        working-directory: moraweave
+        run: |
+          python -m venv /tmp/moraweave-py311
+          /tmp/moraweave-py311/bin/python -m pip install --upgrade pip setuptools wheel
+          /tmp/moraweave-py311/bin/python -m pip install -e '.[dev]'
+          /tmp/moraweave-py311/bin/python -m compileall -q src tests scripts
+          set -o pipefail
+          /tmp/moraweave-py311/bin/python -m pytest -q | tee /tmp/moraweave-py311.log
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python 3.12 full suite including torch auxiliary heads
+        working-directory: moraweave
+        run: |
+          python -m venv /tmp/moraweave-py312
+          /tmp/moraweave-py312/bin/python -m pip install --upgrade pip setuptools wheel
+          /tmp/moraweave-py312/bin/python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          /tmp/moraweave-py312/bin/python -m pip install -e '.[dev]'
+          /tmp/moraweave-py312/bin/python -m pip install build jsonschema
+          /tmp/moraweave-py312/bin/python -m compileall -q src tests scripts
+          set -o pipefail
+          /tmp/moraweave-py312/bin/python -m pytest -q | tee /tmp/moraweave-py312.log
+          /tmp/moraweave-py312/bin/python scripts/validate_rights_registry.py data/rights_registry.json
+
+      - name: CLI, wheel and clean-install validation
+        working-directory: moraweave
+        run: |
+          /tmp/moraweave-py312/bin/moraweave --help
+          /tmp/moraweave-py312/bin/moraweave demo --output runs/public-demo-v0.2.json
+          /tmp/moraweave-py312/bin/moraweave fuse examples/nbest.json --output runs/public-fused-v0.2.json
+          /tmp/moraweave-py312/bin/moraweave-transcribe --help
+          /tmp/moraweave-py312/bin/moraweave-calibrate --help
+          /tmp/moraweave-py312/bin/python -m build --wheel
+          python -m venv /tmp/moraweave-public-wheel
+          /tmp/moraweave-public-wheel/bin/python -m pip install --upgrade pip
+          /tmp/moraweave-public-wheel/bin/python -m pip install dist/*.whl
+          /tmp/moraweave-public-wheel/bin/moraweave --help
+          /tmp/moraweave-public-wheel/bin/moraweave-transcribe --help
+          /tmp/moraweave-public-wheel/bin/moraweave-calibrate --help
+
+      - name: Rights, raw-data and secret hygiene
+        working-directory: moraweave
+        run: |
+          if find . -type f \( -name '*.wav' -o -name '*.mp3' -o -name '*.m4a' -o -name '*.flac' -o -name '*.pt' -o -name '*.pth' -o -name '*.safetensors' \) | grep -q .; then
+            echo 'Raw audio or model weights must not be committed.' >&2
+            exit 1
+          fi
+          if grep -RIE --exclude-dir=.git --exclude-dir=dist --exclude='*.md' '(sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,})' .; then
+            echo 'Possible secret detected.' >&2
+            exit 1
+          fi
+          git diff --check
+
+      - name: Write public validation evidence
+        working-directory: moraweave
+        env:
+          VALIDATED_SOURCE_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          /tmp/moraweave-py312/bin/python - <<'PY'
+          import json
+          import os
+          import platform
+          import subprocess
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          py311 = Path('/tmp/moraweave-py311.log').read_text(encoding='utf-8').splitlines()[-1]
+          py312 = Path('/tmp/moraweave-py312.log').read_text(encoding='utf-8').splitlines()[-1]
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip()
+          payload = {
+              'schemaVersion': '1.0.0',
+              'project': 'MoraWeave',
+              'release': '0.2.0',
+              'branch': 'public/moraweave-v0.2.0',
+              'validatedSourceCommit': head,
+              'validatedSourceTree': tree,
+              'workflowRunId': int(os.environ['RUN_ID']),
+              'validatedAt': datetime.now(UTC).isoformat(),
+              'platform': platform.platform(),
+              'python311Pytest': py311,
+              'python312PytestWithTorch': py312,
+              'compileall': 'passed',
+              'rightsRegistry': 'passed',
+              'wheelBuild': 'passed',
+              'cleanWheelInstall': 'passed',
+              'installedCliSmoke': 'passed',
+              'rawAudioOrWeightsCommitted': False,
+              'likelySecretsDetected': False,
+              'realFasterWhisperInference': 'not-run',
+              'realQwen3ASRInference': 'not-run',
+              'realQwen38TeacherInference': 'not-run',
+              'learnerSpeechBenchmark': 'not-run'
+          }
+          Path('PUBLICATION_V0.2.json').write_text(
+              json.dumps(payload, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          Path('PUBLICATION_V0.2.md').write_text(
+              '# MoraWeave v0.2.0 public validation\n\n'
+              f"- Validated source commit: `{head}`\n"
+              f"- Validated source tree: `{tree}`\n"
+              f"- GitHub Actions run: `{payload['workflowRunId']}`\n"
+              f"- Python 3.11: `{py311}`\n"
+              f"- Python 3.12 + CPU PyTorch: `{py312}`\n"
+              '- Compileall, rights registry, wheel build, clean installation and installed CLI smoke tests: passed\n'
+              '- Raw audio/model weights committed: no\n'
+              '- Likely secrets detected: no\n\n'
+              '## Claim boundary\n\n'
+              'This public gate validates code, contracts, deterministic algorithms, packaging and optional PyTorch auxiliary-head tests. '
+              'It does not claim real-model CER improvement because Whisper/Qwen weights and a held-out Japanese speech corpus were not executed in this gate.\n',
+              encoding='utf-8'
+          )
+          PY
+
+      - name: Commit evidence only after every public gate passes
+        run: |
+          rm -f .github/workflows/moraweave-publish-v0.2.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m '[public-v0.2] Publish verified MoraWeave frontier evidence'
+          git push origin HEAD:public/moraweave-v0.2.0
