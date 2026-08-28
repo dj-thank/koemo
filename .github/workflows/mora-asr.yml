@@ -6,12 +6,14 @@ on:
       - "koemo/asr/**"
       - "scripts/koemo_mora_asr_bench.py"
       - "tests/test_mora_*.py"
+      - "tests/fixtures/mora_asr/**"
       - ".github/workflows/mora-asr.yml"
   push:
     paths:
       - "koemo/asr/**"
       - "scripts/koemo_mora_asr_bench.py"
       - "tests/test_mora_*.py"
+      - "tests/fixtures/mora_asr/**"
       - ".github/workflows/mora-asr.yml"
 
 permissions:
@@ -47,3 +49,14 @@ jobs:
 
       - name: Check benchmark CLI help
         run: python scripts/koemo_mora_asr_bench.py --help
+
+      - name: Run end-to-end accuracy gate fixture
+        run: >-
+          python scripts/koemo_mora_asr_bench.py
+          --manifest tests/fixtures/mora_asr/manifest.jsonl
+          --baseline tests/fixtures/mora_asr/baseline.jsonl
+          --candidate tests/fixtures/mora_asr/candidate.jsonl
+          --bootstrap-samples 200
+          --require-cer-ci
+          --require-mora-ci
+          --fail-on-regression
