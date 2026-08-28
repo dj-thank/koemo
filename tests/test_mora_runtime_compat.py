@@ -84,6 +84,20 @@ class RuntimeCompatibilityTests(unittest.TestCase):
             any(value.startswith("untested_faster_whisper_version") for value in report.warnings)
         )
 
+    def test_prerelease_suffix_digits_are_not_merged_into_patch_version(self) -> None:
+        report = probe_faster_whisper_runtime(
+            _CompatibleModel(),
+            faster_whisper_version="1.2.1rc1",
+            ctranslate2_version="4.6.0rc2",
+        )
+        self.assertTrue(report.compatible)
+        self.assertFalse(
+            any(value.startswith("unsupported_ctranslate2_version") for value in report.errors)
+        )
+        self.assertTrue(
+            any(value.startswith("untested_faster_whisper_version") for value in report.warnings)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
