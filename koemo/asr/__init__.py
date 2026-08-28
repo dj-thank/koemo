@@ -32,6 +32,7 @@ from .whisper_nbest import (
     WhisperNBestItem,
     as_transcript_hypotheses,
     decode_nbest_window,
+    resolve_faster_whisper_suppress_tokens,
 )
 
 __all__ = [
@@ -58,6 +59,7 @@ __all__ = [
     "mora_units_from_reading",
     "normalize_kana",
     "rank_acoustic_hypotheses",
+    "resolve_faster_whisper_suppress_tokens",
     "select_observed_transcript",
     "split_mora",
 ]
