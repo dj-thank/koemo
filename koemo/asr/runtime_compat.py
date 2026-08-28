@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 import platform
+import re
 import sys
 from typing import Any
 
@@ -47,13 +48,15 @@ def _package_version(distribution: str) -> str | None:
 
 
 def _release_tuple(value: str) -> tuple[int, ...]:
+    """Extract leading release digits without merging prerelease suffix digits."""
+
     release = value.split("+", 1)[0].split("-", 1)[0]
     parts: list[int] = []
     for component in release.split("."):
-        digits = "".join(character for character in component if character.isdigit())
-        if not digits:
+        match = re.match(r"(\d+)", component)
+        if match is None:
             break
-        parts.append(int(digits))
+        parts.append(int(match.group(1)))
     return tuple(parts)
 
 
