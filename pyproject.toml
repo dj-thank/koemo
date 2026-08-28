@@ -3,9 +3,10 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "japanese-speaking-assessment-mora-core"
-version = "0.3.0"
-description = "Mora-aware Japanese ASR utilities and Whisper auxiliary heads"
+name = "japanese-complete-transcription"
+version = "1.0.0"
+description = "Local-first complete Japanese transcription with timestamps, subtitles, diarization import and immutable observed evidence"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "SHOTA Moriwaki" }]
@@ -16,15 +17,23 @@ asr = [
   "faster-whisper>=1.1,<2",
   "numpy>=1.26",
 ]
+mora = [
+  "pyopenjtalk>=0.4",
+]
 train = [
   "torch>=2.2",
   "transformers>=4.45",
 ]
 dev = [
-  "pytest>=8",
+  "jsonschema>=4.20",
 ]
+
+[project.scripts]
+jtranscribe = "japanese_transcriber.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["japanese_transcriber*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-ra"
