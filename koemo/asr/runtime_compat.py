@@ -8,6 +8,7 @@ import re
 import sys
 from typing import Any
 
+_TESTED_FASTER_WHISPER_VERSION = "1.2.1"
 _TESTED_FASTER_WHISPER = (1, 2, 1)
 _REQUIRED_CTRANSLATE2_MAJOR = 4
 
@@ -147,10 +148,10 @@ def probe_faster_whisper_runtime(
                 "unsupported_faster_whisper_version:"
                 f"{fw_version}<1.2.1"
             )
-        elif parsed[:3] != _TESTED_FASTER_WHISPER:
+        elif fw_version != _TESTED_FASTER_WHISPER_VERSION:
             warnings.append(
                 "untested_faster_whisper_version:"
-                f"{fw_version};tested=1.2.1"
+                f"{fw_version};tested={_TESTED_FASTER_WHISPER_VERSION}"
             )
 
     if ct2_version is None:
