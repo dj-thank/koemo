@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use MoraWeave in research, please cite this software and the upstream models/datasets you actually use."
+title: "MoraWeave: Mora-aware Evidence-Fused Japanese Speech Transcription"
+type: software
+authors:
+  - family-names: Moriwaki
+    given-names: Shota
+repository-code: "https://github.com/dj-thank/koemo/tree/public/moraweave-v0.1.0/moraweave"
+version: 0.1.0
+date-released: 2026-08-28
+license: MIT
+keywords:
+  - Japanese ASR
+  - mora
+  - Whisper
+  - evidence fusion
+  - selective re-listening
