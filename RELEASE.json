@@ -15,8 +15,9 @@
     "hotwords",
     "immutable-observed-transcript",
     "guarded-local-ollama-normalization",
+    "proxy-and-redirect-safe-local-transport",
     "rttm-speaker-assignment",
-    "mora-annotation",
+    "packaged-mora-annotation",
     "json",
     "txt",
     "markdown",
@@ -26,9 +27,29 @@
     "word-jsonl"
   ],
   "publicValidation": {
-    "modelFreePythonTests": 8,
-    "pythonCompileall": "passed-locally-before-publication",
-    "nodeCoreTests": "retained-from-mora-core",
+    "workflowRunId": 33165841169,
+    "validatedHead": "5badbe55f3b3323170b05cbaf804e58545067b8a",
+    "conclusion": "success",
+    "node": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "completePython": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "pythonComponents": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 1,
+      "skipReason": "Torch is intentionally absent from the lightweight lane"
+    },
+    "compileall": "passed",
+    "packageInstall": "passed",
+    "installedCliSmoke": "passed",
+    "installedMoraSmoke": "passed",
     "realModelInference": "not-claimed",
     "realOllamaRequest": "not-claimed",
     "learnerSpeechBenchmark": "not-claimed"
