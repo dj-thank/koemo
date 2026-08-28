@@ -16,6 +16,7 @@ from koemo.asr import (
     merge_char_ctc_to_mora,
     mora_count,
     normalize_kana,
+    resolve_faster_whisper_suppress_tokens,
     select_observed_transcript,
     split_mora,
 )
@@ -179,6 +180,40 @@ class WhisperNBestTests(unittest.TestCase):
     class _Wrapper:
         def __init__(self) -> None:
             self.model = WhisperNBestTests._RawModel()
+
+    class _Tokenizer:
+        non_speech_tokens = (50, 51)
+        transcribe = 60
+        translate = 61
+        sot = 62
+        sot_prev = 63
+        sot_lm = 64
+        no_speech = 65
+
+        @staticmethod
+        def decode(ids):
+            return "|".join(str(value) for value in ids)
+
+    def test_resolves_faster_whisper_suppression_sentinel(self) -> None:
+        resolved = resolve_faster_whisper_suppress_tokens(
+            self._Tokenizer(), (-1, 99)
+        )
+        self.assertEqual(resolved, (50, 51, 60, 61, 62, 63, 64, 65, 99))
+
+    def test_decode_uses_faster_whisper_default_suppression_with_tokenizer(self) -> None:
+        wrapper = self._Wrapper()
+        items = decode_nbest_window(
+            wrapper,
+            encoded_features=object(),
+            prompt_tokens=(1, 2, 3),
+            num_hypotheses=2,
+            tokenizer=self._Tokenizer(),
+        )
+        self.assertEqual(items[0].text, "10|11")
+        self.assertEqual(
+            wrapper.model.kwargs["suppress_tokens"],
+            [50, 51, 60, 61, 62, 63, 64, 65],
+        )
 
     def test_ct2_adapter_returns_sequences_and_scores(self) -> None:
         wrapper = self._Wrapper()
