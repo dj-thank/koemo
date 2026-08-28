@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local.json
+
+# Generated transcription outputs
+transcripts/
+*.transcript.json
+*.observed.txt
+*.segments.tsv
+*.words.jsonl
+*.srt
+*.vtt
+
+# Audio/video and model artifacts
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+*.mp4
+*.mkv
+*.webm
+*.mov
+*.avi
+*.wma
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
