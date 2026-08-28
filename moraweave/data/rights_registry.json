@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0.0",
+  "policy": "These flags are conservative MoraWeave execution policy, not legal advice. Re-review upstream terms before every dataset-version change.",
+  "assets": [
+    {
+      "assetId": "common-voice-26-ja",
+      "sourceName": "Mozilla Common Voice Corpus 26.0 — Japanese",
+      "sourceUrl": "https://commonvoice.mozilla.org/en/datasets",
+      "licenseName": "CC0-1.0 with upstream dataset terms and privacy obligations",
+      "licenseUrl": "https://commonvoice.mozilla.org/en/terms",
+      "train": "allow",
+      "deriveFeatures": "allow",
+      "redistributeRaw": "deny",
+      "exportSpeakerId": "deny",
+      "attribution": "Mozilla Common Voice contributors",
+      "reviewedAt": "2026-08-28",
+      "notes": "MoraWeave deliberately does not redistribute audio and HMAC-pseudonymizes client_id locally. Check the exact 26.0 card and terms before use."
+    },
+    {
+      "assetId": "jmdict-current",
+      "sourceName": "JMdict / EDRDG",
+      "sourceUrl": "https://www.edrdg.org/jmdict/j_jmdict.html",
+      "licenseName": "Creative Commons Attribution-ShareAlike 4.0 International",
+      "licenseUrl": "https://www.edrdg.org/edrdg/licence.html",
+      "train": "allow",
+      "deriveFeatures": "allow",
+      "redistributeRaw": "review",
+      "exportSpeakerId": "deny",
+      "attribution": "Electronic Dictionary Research and Development Group",
+      "reviewedAt": "2026-08-28",
+      "notes": "Redistribution requires attribution and share-alike compliance. Default runtime stores derived reading/ngram features only."
+    },
+    {
+      "assetId": "aozora-work-manifest",
+      "sourceName": "Aozora Bunko — per-work rights manifest",
+      "sourceUrl": "https://www.aozora.gr.jp/",
+      "licenseName": "Varies by work and source file",
+      "licenseUrl": "https://www.aozora.gr.jp/guide/kijyunn.html",
+      "train": "review",
+      "deriveFeatures": "review",
+      "redistributeRaw": "deny",
+      "exportSpeakerId": "deny",
+      "attribution": "Aozora Bunko and the individual work metadata",
+      "reviewedAt": "2026-08-28",
+      "notes": "No corpus-wide permission is assumed. A generated per-work manifest must explicitly allow every selected work."
+    },
+    {
+      "assetId": "reazonspeech-current",
+      "sourceName": "ReazonSpeech",
+      "sourceUrl": "https://github.com/reazon-research/ReazonSpeech",
+      "licenseName": "Upstream dataset-specific terms",
+      "licenseUrl": "https://github.com/reazon-research/ReazonSpeech",
+      "train": "review",
+      "deriveFeatures": "review",
+      "redistributeRaw": "deny",
+      "exportSpeakerId": "deny",
+      "attribution": "Reazon Human Interaction Lab",
+      "reviewedAt": "2026-08-28",
+      "notes": "Accept and record the exact upstream release terms before enabling download or training."
+    },
+    {
+      "assetId": "saslaw-current",
+      "sourceName": "SaSLaW Japanese learner speech corpus",
+      "sourceUrl": "https://github.com/sarulab-speech/SaSLaW",
+      "licenseName": "Repository and corpus-specific terms",
+      "licenseUrl": "https://github.com/sarulab-speech/SaSLaW",
+      "train": "review",
+      "deriveFeatures": "review",
+      "redistributeRaw": "deny",
+      "exportSpeakerId": "deny",
+      "attribution": "SaSLaW corpus authors",
+      "reviewedAt": "2026-08-28",
+      "notes": "Learner speech is privacy-sensitive. Require explicit corpus permission and speaker-disjoint evaluation before use."
+    }
+  ]
+}
