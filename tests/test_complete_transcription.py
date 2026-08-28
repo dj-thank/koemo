@@ -5,6 +5,7 @@ import tempfile
 import unittest
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 from japanese_transcriber.diarization import assign_speakers, parse_rttm, relabel_speakers
 from japanese_transcriber.engine import EngineConfig
@@ -76,11 +77,10 @@ class NormalizationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_local_endpoint("http://127.0.0.1:11434/api/chat?redirect=1")
 
-    def test_local_opener_disables_proxy_and_redirect_transport(self) -> None:
-        opener = build_local_opener()
-        proxy_handlers = [handler for handler in opener.handlers if isinstance(handler, urllib.request.ProxyHandler)]
-        self.assertEqual(len(proxy_handlers), 1)
-        self.assertEqual(proxy_handlers[0].proxies, {})
+    def test_local_opener_ignores_environment_proxies_and_disables_redirects(self) -> None:
+        # Passing ProxyHandler({}) must suppress urllib's default environment-proxy handler.
+        with patch("urllib.request.getproxies", side_effect=AssertionError("environment proxy was consulted")):
+            opener = build_local_opener()
         self.assertTrue(any(type(handler).__name__ == "_NoRedirectHandler" for handler in opener.handlers))
 
     def test_llm_block_validation_falls_back_on_divergence(self) -> None:
