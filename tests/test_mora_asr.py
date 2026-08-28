@@ -7,7 +7,9 @@ from koemo.asr import (
     CTCCharUnit,
     HypothesisFeatures,
     LLMRankVote,
+    RankedHypothesis,
     TranscriptHypothesis,
+    TranscriptState,
     UnitKind,
     attach_llm_rank_only,
     attach_normalized_transcript,
@@ -151,6 +153,19 @@ class ScoringTests(unittest.TestCase):
             max(abs(item.llm_tiebreak_score) for item in ranked.hypotheses),
             0.15,
         )
+
+    def test_transcript_state_rejects_observed_text_mutation(self) -> None:
+        candidate = self._candidates()[0]
+        ranked = RankedHypothesis(
+            hypothesis=candidate, acoustic_score=1.0, rank=1
+        )
+        with self.assertRaisesRegex(ValueError, "selected acoustic candidate"):
+            TranscriptState(
+                observed_transcript="LLMが書き換えた文",
+                observed_candidate_id=candidate.candidate_id,
+                hypotheses=(ranked,),
+                mora_units=(),
+            )
 
     def test_normalized_transcript_is_separate(self) -> None:
         state = select_observed_transcript(self._candidates())
