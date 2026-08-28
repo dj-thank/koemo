@@ -96,12 +96,15 @@ export function selectObservedCandidate(candidates, options = {}) {
 }
 
 export function selectNormalizedCandidate(candidates, observedTranscript, options = {}) {
+  // The normalized lane is derivative and may use a local-LM rank, while the
+  // observed lane above remains strictly acoustic. These initialization weights
+  // are intentionally separate and must be calibrated on held-out Japanese audio.
   const ranked = fuseCandidates(candidates, {
-    whisper: options.whisper ?? 0.45,
-    moraCtc: options.moraCtc ?? 0.2,
-    localLm: options.localLm ?? 0.3,
-    vocabulary: options.vocabulary ?? 0.05,
-    editPenalty: options.editPenalty ?? 0.2,
+    whisper: options.whisper ?? 0.25,
+    moraCtc: options.moraCtc ?? 0.15,
+    localLm: options.localLm ?? 0.5,
+    vocabulary: options.vocabulary ?? 0.1,
+    editPenalty: options.editPenalty ?? 0.15,
     referenceText: observedTranscript,
   });
   return {
