@@ -1,12 +1,11 @@
 {
-  "name": "japanese-speaking-assessment-mora-core",
-  "version": "0.3.0",
-  "description": "Mora-aware Japanese ASR contracts, N-best fusion and rank-only local LLM reranking",
+  "name": "japanese-complete-transcription",
+  "version": "1.0.0",
+  "description": "Complete local-first Japanese transcription built on the mora-aware ASR core",
   "type": "module",
+  "private": true,
   "license": "MIT",
-  "engines": {
-    "node": ">=20"
-  },
+  "engines": { "node": ">=20" },
   "scripts": {
     "test": "node --test tests/*.test.mjs"
   },
