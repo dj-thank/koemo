@@ -5,20 +5,31 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Iterable, Sequence
 
+from .calibration import (
+    area_under_risk_coverage,
+    brier_score,
+    expected_calibration_error,
+    negative_log_likelihood,
+)
+
 NUMBER_PATTERN = re.compile(r"(?:\d[\d,.:/-]*|[〇一二三四五六七八九十百千万億兆]+)")
+PUNCTUATION_PATTERN = re.compile(r"[、。！？!?：:；;]")
+CRITICAL_ENTITY_PATTERN = re.compile(
+    r"(?:\d[\d,.:/-]*|[A-Za-z][A-Za-z0-9+._/#-]*|[\u30A0-\u30FFー]{2,}|[\u3400-\u9FFF]{2,})"
+)
 FILLERS = ("えー", "ええと", "えっと", "あの", "その", "まあ", "うーん", "んー")
 
 
 def edit_distance(reference: Sequence[str], hypothesis: Sequence[str]) -> int:
     previous = list(range(len(hypothesis) + 1))
-    for row, ref_item in enumerate(reference, 1):
+    for row, reference_item in enumerate(reference, 1):
         current = [row]
-        for column, hyp_item in enumerate(hypothesis, 1):
+        for column, hypothesis_item in enumerate(hypothesis, 1):
             current.append(
                 min(
                     previous[column] + 1,
                     current[column - 1] + 1,
-                    previous[column - 1] + (ref_item != hyp_item),
+                    previous[column - 1] + (reference_item != hypothesis_item),
                 )
             )
         previous = current
@@ -33,7 +44,7 @@ def error_rate(reference: Sequence[str], hypothesis: Sequence[str]) -> float | N
 
 def normalize_characters(text: str) -> list[str]:
     value = unicodedata.normalize("NFKC", str(text or ""))
-    return [char for char in value if not char.isspace()]
+    return [character for character in value if not character.isspace()]
 
 
 def cer(reference: str, hypothesis: str) -> float | None:
@@ -46,18 +57,41 @@ def kana_cer(reference_reading: str | None, hypothesis_reading: str | None) -> f
     return cer(reference_reading, hypothesis_reading)
 
 
-def mora_error_rate(reference_mora: Sequence[str] | None, hypothesis_mora: Sequence[str] | None) -> float | None:
+def mora_error_rate(
+    reference_mora: Sequence[str] | None,
+    hypothesis_mora: Sequence[str] | None,
+) -> float | None:
     if reference_mora is None or hypothesis_mora is None:
         return None
     return error_rate(reference_mora, hypothesis_mora)
 
 
+def _pattern_error_rate(pattern: re.Pattern[str], reference: str, hypothesis: str) -> float | None:
+    expected = pattern.findall(unicodedata.normalize("NFKC", reference))
+    observed = pattern.findall(unicodedata.normalize("NFKC", hypothesis))
+    if not expected:
+        return 0.0 if not observed else None
+    return error_rate(expected, observed)
+
+
 def number_error_rate(reference: str, hypothesis: str) -> float | None:
-    ref_numbers = NUMBER_PATTERN.findall(unicodedata.normalize("NFKC", reference))
-    hyp_numbers = NUMBER_PATTERN.findall(unicodedata.normalize("NFKC", hypothesis))
-    if not ref_numbers:
-        return 0.0 if not hyp_numbers else None
-    return error_rate(ref_numbers, hyp_numbers)
+    return _pattern_error_rate(NUMBER_PATTERN, reference, hypothesis)
+
+
+def punctuation_error_rate(reference: str, hypothesis: str) -> float | None:
+    return _pattern_error_rate(PUNCTUATION_PATTERN, reference, hypothesis)
+
+
+def critical_entity_sequence(text: str) -> list[str]:
+    return CRITICAL_ENTITY_PATTERN.findall(unicodedata.normalize("NFKC", str(text or "")))
+
+
+def critical_entity_error_rate(reference: str, hypothesis: str) -> float | None:
+    expected = critical_entity_sequence(reference)
+    observed = critical_entity_sequence(hypothesis)
+    if not expected:
+        return 0.0 if not observed else None
+    return error_rate(expected, observed)
 
 
 def filler_sequence(text: str, fillers: Iterable[str] = FILLERS) -> list[str]:
@@ -78,8 +112,7 @@ def disfluency_preservation_rate(reference: str, hypothesis: str) -> float | Non
     observed = filler_sequence(hypothesis)
     if not expected:
         return 1.0 if not observed else None
-    distance = edit_distance(expected, observed)
-    return max(0.0, 1.0 - distance / len(expected))
+    return max(0.0, 1.0 - edit_distance(expected, observed) / len(expected))
 
 
 def unsupported_correction_rate(
@@ -87,36 +120,84 @@ def unsupported_correction_rate(
     normalized_text: str,
     supported_spans: Sequence[tuple[int, int]] = (),
 ) -> float:
-    """Estimate edits outside explicitly supported observed-character spans."""
+    """Return the fraction of edits outside explicitly supported observed spans."""
 
     observed = normalize_characters(observed_text)
     normalized = normalize_characters(normalized_text)
     if observed == normalized:
         return 0.0
-    allowed = set()
+    allowed: set[int] = set()
     for start, end in supported_spans:
         allowed.update(range(max(0, start), max(start, end)))
 
-    # A lightweight alignment that counts changed observed positions not covered by evidence.
-    rows = len(observed) + 1
-    cols = len(normalized) + 1
-    dp: list[list[tuple[int, int]]] = [[(0, 0)] * cols for _ in range(rows)]
-    for i in range(1, rows):
-        dp[i][0] = (i, 0 if i - 1 in allowed else 1)
-    for j in range(1, cols):
-        dp[0][j] = (j, 1)
-    for i in range(1, rows):
-        for j in range(1, cols):
-            match_cost = 0 if observed[i - 1] == normalized[j - 1] else 1
-            unsupported = 0 if match_cost == 0 or i - 1 in allowed else 1
-            choices = [
-                (dp[i - 1][j][0] + 1, dp[i - 1][j][1] + (0 if i - 1 in allowed else 1)),
-                (dp[i][j - 1][0] + 1, dp[i][j - 1][1] + 1),
-                (dp[i - 1][j - 1][0] + match_cost, dp[i - 1][j - 1][1] + unsupported),
+    rows, columns = len(observed) + 1, len(normalized) + 1
+    dynamic: list[list[tuple[int, int]]] = [[(0, 0)] * columns for _ in range(rows)]
+    for row in range(1, rows):
+        dynamic[row][0] = (row, 0 if row - 1 in allowed else 1)
+    for column in range(1, columns):
+        dynamic[0][column] = (column, 1)
+    for row in range(1, rows):
+        for column in range(1, columns):
+            changed = observed[row - 1] != normalized[column - 1]
+            substitution_unsupported = int(changed and row - 1 not in allowed)
+            options = [
+                (
+                    dynamic[row - 1][column][0] + 1,
+                    dynamic[row - 1][column][1] + int(row - 1 not in allowed),
+                ),
+                (dynamic[row][column - 1][0] + 1, dynamic[row][column - 1][1] + 1),
+                (
+                    dynamic[row - 1][column - 1][0] + int(changed),
+                    dynamic[row - 1][column - 1][1] + substitution_unsupported,
+                ),
             ]
-            dp[i][j] = min(choices, key=lambda item: (item[0], item[1]))
-    edits, unsupported_edits = dp[-1][-1]
-    return 0.0 if edits == 0 else unsupported_edits / edits
+            dynamic[row][column] = min(options, key=lambda item: (item[0], item[1]))
+    edits, unsupported = dynamic[-1][-1]
+    return 0.0 if edits == 0 else unsupported / edits
+
+
+def oracle_cer(reference: str, hypotheses: Sequence[str]) -> float | None:
+    values = [cer(reference, hypothesis) for hypothesis in hypotheses]
+    finite = [value for value in values if value is not None]
+    return min(finite) if finite else None
+
+
+def top_k_exact_match(reference: str, hypotheses: Sequence[str]) -> bool:
+    expected = normalize_characters(reference)
+    return any(normalize_characters(hypothesis) == expected for hypothesis in hypotheses)
+
+
+@dataclass(frozen=True, slots=True)
+class ConfidenceEvaluation:
+    expected_calibration_error: float
+    brier: float
+    negative_log_likelihood: float
+    aurc: float
+
+
+def evaluate_confidence(
+    confidences: Sequence[float],
+    correct: Sequence[int | bool],
+    *,
+    bins: int = 15,
+) -> ConfidenceEvaluation:
+    return ConfidenceEvaluation(
+        expected_calibration_error=expected_calibration_error(confidences, correct, bins=bins),
+        brier=brier_score(confidences, correct),
+        negative_log_likelihood=negative_log_likelihood(confidences, correct),
+        aurc=area_under_risk_coverage(confidences, correct),
+    )
+
+
+def relisten_efficiency(
+    before_error: float | None,
+    after_error: float | None,
+    *,
+    cost_ms: int,
+) -> float | None:
+    if before_error is None or after_error is None or cost_ms <= 0:
+        return None
+    return (before_error - after_error) / cost_ms
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +208,8 @@ class EvaluationResult:
     number_error_rate: float | None
     disfluency_preservation: float | None
     unsupported_correction: float
+    punctuation_error_rate: float | None = None
+    critical_entity_error_rate: float | None = None
 
 
 def evaluate_transcript(
@@ -149,4 +232,6 @@ def evaluate_transcript(
         unsupported_correction=unsupported_correction_rate(
             observed, normalized, supported_normalization_spans
         ),
+        punctuation_error_rate=punctuation_error_rate(reference, observed),
+        critical_entity_error_rate=critical_entity_error_rate(reference, observed),
     )
