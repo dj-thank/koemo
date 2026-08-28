@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/moraweave/evidence-lattice.schema.json",
+  "title": "MoraWeave evidence lattice",
+  "type": "object",
+  "required": ["schemaVersion", "candidates"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "audioSha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "text"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 },
+          "tokenIds": { "type": "array", "items": { "type": "integer" } },
+          "acoustic": { "type": ["number", "null"] },
+          "mora": { "type": ["number", "null"] },
+          "lexical": { "type": ["number", "null"] },
+          "preservation": { "type": ["number", "null"] },
+          "teacher": { "type": ["number", "null"] },
+          "metadata": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
