@@ -35,14 +35,8 @@ jobs:
 
       - name: Compile bridge modules
         run: |
-          python -m compileall -q \
-            koemo/semantic_asr_bridge.py \
-            koemo/authoritative_transcription.py \
-            koemo/semantic_asr_settings.py
+          python -m compileall -q koemo/semantic_asr_bridge.py koemo/authoritative_transcription.py koemo/semantic_asr_settings.py
 
       - name: Run bridge contract tests
         run: |
-          python -m pytest -q \
-            tests/test_semantic_asr_bridge.py \
-            tests/test_authoritative_transcription.py \
-            tests/test_semantic_asr_settings.py
+          python -m pytest -q tests/test_semantic_asr_bridge.py tests/test_authoritative_transcription.py tests/test_semantic_asr_settings.py
